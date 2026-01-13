@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>大明遠航 —— 麒麟之誓 3D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              imperial: {
+                gold: '#C5A059',      /* 古銅金 (Antique Gold) */
+                red: '#8B1E1E',       /* 硃砂紅 (Cinnabar Red) */
+                ocean: '#1B365D',     /* 深海藍 (Deep Ocean Blue) */
+                ink: '#2C1810',       /* 水墨褐 (Dark Ink/Brown) */
+                parchment: '#F0E6D2', /* 羊皮紙 (Parchment) */
+                parchment_dark: '#E6D5B8', /* 舊紙 (Aged Paper) */
+              },
+              game: {
+                trust: '#B91C1C',     /* 紅色系 */
+                morale: '#0F766E',    /* 青玉色 (Jade/Teal) */
+                accent: '#C5A059',    
+              }
+            },
+            fontFamily: {
+              serif: ['"Noto Serif TC"', 'STSong', '"Songti SC"', 'serif'],
+              sans: ['"Microsoft YaHei"', 'sans-serif'],
+            },
+            animation: {
+              'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+              'fadeIn': 'fadeIn 0.5s ease-out',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0', transform: 'translateY(10px)' },
+                '100%': { opacity: '1', transform: 'translateY(0)' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <style>
+      /* 深海漸層背景 */
+      body { 
+        margin: 0; 
+        padding: 0; 
+        background: radial-gradient(circle at center, #1e3a8a 0%, #0f172a 100%); 
+        overflow: hidden; 
+      }
+      /* Custom scrollbar */
+      ::-webkit-scrollbar { width: 6px; }
+      ::-webkit-scrollbar-track { background: #E6D5B8; }
+      ::-webkit-scrollbar-thumb { background: #8B1E1E; border-radius: 3px; }
+      
+      /* Globe Labels Fix */
+      .globe-label {
+        font-family: "Noto Serif TC", serif;
+        color: #F0E6D2;
+        text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+        font-weight: bold;
+        font-size: 14px;
+        pointer-events: none;
+        white-space: nowrap;
+        transform: translate(-50%, -50%);
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
+    "react/": "https://esm.sh/react@^19.2.3/",
+    "react": "https://esm.sh/react@^19.2.3",
+    "react-globe.gl": "https://esm.sh/react-globe.gl@^2.37.0"
+  }
+}
+</script>
+</head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
