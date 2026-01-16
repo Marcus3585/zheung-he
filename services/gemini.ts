@@ -1,7 +1,9 @@
 import { GoogleGenAI } from "@google/genai";
-import { Location } from '../types';
+import { Location } from '../types.ts';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Note: On GitHub Pages, process.env is polyfilled by index.html but will be empty unless manually set in build
+// This prevents the app from crashing on load.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
 const SYSTEM_INSTRUCTION = `
 你是一位精通明朝歷史和鄭和下西洋（三寶太監）的專家史官。
@@ -23,7 +25,7 @@ export const getLocationDetails = async (location: Location): Promise<string> =>
     return response.text || "暫無詳細信息。";
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "無法獲取艦隊檔案。請檢查您的網絡連接。";
+    return "無法獲取艦隊檔案。請檢查您的網絡連接或API金鑰。";
   }
 };
 

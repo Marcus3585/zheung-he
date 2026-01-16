@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react';
 import Globe, { GlobeMethods } from 'react-globe.gl';
-import { Location, Route } from '../types';
+import { Location, Route } from '../types.ts';
 
 interface GlobeVizProps {
   locations: Location[];

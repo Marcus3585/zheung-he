@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Location } from '../types';
+import { Location } from '../types.ts';
 import { Ship, MapPin, Box, Loader2 } from 'lucide-react';
-import { getLocationDetails } from '../services/gemini';
+import { getLocationDetails } from '../services/gemini.ts';
 
 interface InfoPanelProps {
   location: Location | null;

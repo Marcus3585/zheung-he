@@ -1,4 +1,4 @@
-import { Location, Route, GameEvent, QuizQuestion } from './types';
+import { Location, Route, GameEvent, QuizQuestion } from './types.ts';
 
 // 地點數據 (對應 3D 地圖座標)
 export const LOCATIONS: Location[] = [

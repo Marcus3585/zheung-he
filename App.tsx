@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import GlobeViz from './components/GlobeViz';
-import InfoPanel from './components/InfoPanel';
-import ChatInterface from './components/ChatInterface';
-import { LOCATIONS, ROUTES, GAME_EVENTS, QUIZ_QUESTIONS } from './constants';
-import { GameStats, GameEvent, GameChoice, QuizQuestion } from './types';
+import GlobeViz from './components/GlobeViz.tsx';
+import InfoPanel from './components/InfoPanel.tsx';
+import ChatInterface from './components/ChatInterface.tsx';
+import { LOCATIONS, ROUTES, GAME_EVENTS, QUIZ_QUESTIONS } from './constants.ts';
+import { GameStats, GameEvent, GameChoice, QuizQuestion } from './types.ts';
 import { Clock, AlertTriangle, Skull, Minimize2, Maximize2 } from 'lucide-react';
 
 const INITIAL_STATS: GameStats = {
@@ -17,6 +17,21 @@ const INITIAL_STATS: GameStats = {
 };
 
 type GamePhase = 'intro' | 'quiz' | 'playing' | 'challenge' | 'result' | 'gameover' | 'victory';
+
+// Moved components outside to fix children prop type errors and prevent re-creation on render
+const ModalWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <div className="absolute inset-0 z-50 flex items-center justify-center bg-imperial-ocean/60 backdrop-blur-sm p-4 animate-fadeIn">
+     {children}
+  </div>
+);
+
+const PaperCard: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className = "" }) => (
+  <div className={`bg-imperial-parchment border-2 border-imperial-ink/30 rounded-xl shadow-2xl relative overflow-hidden text-imperial-ink font-serif ${className}`}>
+      {/* Paper texture feel */}
+      <div className="absolute inset-0 bg-imperial-gold/5 pointer-events-none"></div>
+      <div className="relative z-10">{children}</div>
+  </div>
+);
 
 const App: React.FC = () => {
   // Game State
@@ -213,21 +228,6 @@ const App: React.FC = () => {
     if (stats.trust >= 60) return 'B';
     return 'C';
   };
-
-  // Common wrapper class for modals to ensure consistent styling
-  const ModalWrapper = ({ children }: { children: React.ReactNode }) => (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-imperial-ocean/60 backdrop-blur-sm p-4 animate-fadeIn">
-       {children}
-    </div>
-  );
-  
-  const PaperCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
-    <div className={`bg-imperial-parchment border-2 border-imperial-ink/30 rounded-xl shadow-2xl relative overflow-hidden text-imperial-ink font-serif ${className}`}>
-        {/* Paper texture feel */}
-        <div className="absolute inset-0 bg-imperial-gold/5 pointer-events-none"></div>
-        <div className="relative z-10">{children}</div>
-    </div>
-  );
 
   return (
     <div className="relative w-full h-screen overflow-hidden font-sans">
