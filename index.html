@@ -11,16 +11,16 @@
           extend: {
             colors: {
               imperial: {
-                gold: '#C5A059',      /* 古銅金 (Antique Gold) */
-                red: '#8B1E1E',       /* 硃砂紅 (Cinnabar Red) */
-                ocean: '#1B365D',     /* 深海藍 (Deep Ocean Blue) */
-                ink: '#2C1810',       /* 水墨褐 (Dark Ink/Brown) */
-                parchment: '#F0E6D2', /* 羊皮紙 (Parchment) */
-                parchment_dark: '#E6D5B8', /* 舊紙 (Aged Paper) */
+                gold: '#C5A059',
+                red: '#8B1E1E',
+                ocean: '#1B365D',
+                ink: '#2C1810',
+                parchment: '#F0E6D2',
+                parchment_dark: '#E6D5B8',
               },
               game: {
-                trust: '#B91C1C',     /* 紅色系 */
-                morale: '#0F766E',    /* 青玉色 (Jade/Teal) */
+                trust: '#B91C1C',
+                morale: '#0F766E',
                 accent: '#C5A059',    
               }
             },
@@ -29,7 +29,6 @@
               sans: ['"Microsoft YaHei"', 'sans-serif'],
             },
             animation: {
-              'pulse-fast': 'pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
               'fadeIn': 'fadeIn 0.5s ease-out',
             },
             keyframes: {
@@ -43,52 +42,959 @@
       }
     </script>
     <style>
-      /* 深海漸層背景 */
-      body { 
-        margin: 0; 
-        padding: 0; 
-        background: radial-gradient(circle at center, #1e3a8a 0%, #0f172a 100%); 
-        overflow: hidden; 
-      }
-      /* Custom scrollbar */
+      body { margin: 0; padding: 0; background: radial-gradient(circle at center, #1e3a8a 0%, #0f172a 100%); overflow: hidden; }
       ::-webkit-scrollbar { width: 6px; }
       ::-webkit-scrollbar-track { background: #E6D5B8; }
       ::-webkit-scrollbar-thumb { background: #8B1E1E; border-radius: 3px; }
-      
-      /* Globe Labels Fix */
-      .globe-label {
-        font-family: "Noto Serif TC", serif;
-        color: #F0E6D2;
-        text-shadow: 2px 2px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
-        font-weight: bold;
-        font-size: 14px;
-        pointer-events: none;
-        white-space: nowrap;
-        transform: translate(-50%, -50%);
-      }
     </style>
-  <script type="importmap">
+    
+    <!-- Import Map -->
+    <script type="importmap">
 {
   "imports": {
-    "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
+    "react": "https://esm.sh/react@18.2.0",
+    "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+    "react-globe.gl": "https://esm.sh/react-globe.gl@2.27.2",
+    "lucide-react": "https://esm.sh/lucide-react@0.292.0",
+    "@google/genai": "https://esm.sh/@google/genai@0.1.1",
     "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "lucide-react": "https://esm.sh/lucide-react@^0.562.0",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-globe.gl": "https://esm.sh/react-globe.gl@^2.37.0"
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
-<!-- Process Shim for Browser Environment -->
-<script>
-  window.process = { env: { API_KEY: '' } };
-</script>
-<!-- Babel Standalone for in-browser compilation -->
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-</head>
+
+    <!-- Process Shim -->
+    <script>
+      window.process = { env: { API_KEY: '' } };
+    </script>
+    
+    <!-- Babel -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  </head>
   <body>
     <div id="root"></div>
-    <!-- Load the entry point -->
-    <script type="text/babel" data-presets="react,typescript" data-type="module" src="./index.tsx"></script>
+
+    <script type="text/babel" data-presets="react,typescript" data-type="module">
+      import React, { useState, useEffect, useRef, useMemo } from 'react';
+      import ReactDOM from 'react-dom/client';
+      import Globe from 'react-globe.gl';
+      import { Clock, AlertTriangle, Skull, Minimize2, Maximize2, Ship, MapPin, Box, Loader2, MessageSquare, Send, X } from 'lucide-react';
+      import { GoogleGenAI } from "@google/genai";
+
+      // --- CONSTANTS & DATA ---
+
+      const LOCATIONS = [
+        { id: 'nanjing', name: 'Nanjing', nameCn: '南京 (劉家港)', lat: 31.5, lng: 121.1, description: '明朝航海起點，六國碼頭。', tradeGoods: ['絲綢', '瓷器'] },
+        { id: 'champa', name: 'Champa', nameCn: '占城', lat: 13.9, lng: 109.3, description: '今越南南部，重要的首個補給站。', tradeGoods: ['稻米', '烏木'] },
+        { id: 'palembang', name: 'Palembang', nameCn: '舊港', lat: -2.97, lng: 104.77, description: '剿滅海盜陳祖義之地。', tradeGoods: ['香料'] },
+        { id: 'malacca', name: 'Malacca', nameCn: '滿剌加', lat: 2.2, lng: 102.25, description: '戰略海峽控制點，設有官廠。', tradeGoods: ['錫', '倉儲'] },
+        { id: 'semudera', name: 'Semudera', nameCn: '蘇門答腊', lat: 5.18, lng: 97.14, description: '蘇門答臘北部，曾發生蘇干剌叛亂。', tradeGoods: ['胡椒', '硫磺'] },
+        { id: 'ceylon', name: 'Ceylon', nameCn: '錫蘭', lat: 6.9, lng: 79.8, description: '佛牙寺所在地，曾發生衝突。', tradeGoods: ['寶石', '珍珠'] },
+        { id: 'indianocean', name: 'Indian Ocean', nameCn: '印度洋', lat: 0, lng: 88, description: '廣袤的海洋，需牽星術導航。', tradeGoods: [] },
+        { id: 'calicut', name: 'Calicut', nameCn: '古里', lat: 11.25, lng: 75.78, description: '西洋大港，主要貿易中心。', tradeGoods: ['胡椒', '棉布'] },
+        { id: 'hormuz', name: 'Hormuz', nameCn: '忽鲁谟斯', lat: 27.1, lng: 56.4, description: '波斯灣門戶，極其富庶。', tradeGoods: ['地毯', '馬匹'] },
+        { id: 'bengal', name: 'Bengal', nameCn: '榜葛剌', lat: 23.0, lng: 90.0, description: '進貢麒麟之國。', tradeGoods: ['長頸鹿'] },
+      ];
+
+      const ROUTES = [
+        { start: 'nanjing', end: 'champa', voyages: [1] },
+        { start: 'champa', end: 'palembang', voyages: [1] },
+        { start: 'palembang', end: 'malacca', voyages: [1] },
+        { start: 'malacca', end: 'semudera', voyages: [1] },
+        { start: 'semudera', end: 'ceylon', voyages: [1] },
+        { start: 'ceylon', end: 'calicut', voyages: [1] },
+        { start: 'calicut', end: 'hormuz', voyages: [1] },
+        { start: 'calicut', end: 'bengal', voyages: [1] },
+      ];
+
+      const QUIZ_QUESTIONS = [
+          { question: '鄭和下西洋始於哪位皇帝在位期間？', options: ['明太祖朱元璋', '明成祖朱棣', '明仁宗朱高熾', '明宣宗朱瞻基'], correct: 1, explanation: '始於明成祖朱棣永樂三年（1405年）。' },
+          { question: '鄭和的艦隊最遠到達哪個地區？', options: ['日本', '印度', '非洲東岸', '歐洲'], correct: 2, explanation: '最遠到達非洲東岸，如木骨都束（今索馬利亞）。' },
+          { question: '鄭和一共進行了多少次下西洋的航行？', options: ['五次', '六次', '七次', '八次'], correct: 2, explanation: '前後歷時近三十年，共七次。' },
+          { question: '鄭和原名馬三保，他的宗教信仰是什麼？', options: ['佛教', '道教', '伊斯蘭教', '基督教'], correct: 2, explanation: '他是回族穆斯林，信仰伊斯蘭教。' },
+          { question: '鄭和艦隊中最大的船隻被稱為什麼？', options: ['戰船', '寶船', '龍船', '福船'], correct: 1, explanation: '最大的船隻稱為「寶船」。' },
+          { question: '鄭和下西洋的主要目的是什麼？', options: ['掠奪財富', '宣揚國威', '尋找新大陸', '傳播基督教'], correct: 1, explanation: '目的是「宣德化而柔遠人」，宣揚國威與發展朝貢貿易。' },
+          { question: '鄭和在舊港（今印尼巨港）擊敗了哪個海盜？', options: ['張保仔', '陳祖義', '王直', '鄭芝龍'], correct: 1, explanation: '擊敗並生擒了海盜王陳祖義。' },
+          { question: '鄭和艦隊使用什麼方法在海上確定方位？', options: ['GPS', '牽星術', '雷達', '無線電'], correct: 1, explanation: '使用「牽星術」觀測星象定位。' },
+          { question: '馬歡著有哪本記錄航行見聞的書籍？', options: ['《島夷誌略》', '《瀛涯勝覽》', '《西洋番國志》', '《海國圖志》'], correct: 1, explanation: '馬歡著有《瀛涯勝覽》。' },
+          { question: '「西洋」主要指的是哪個海域？', options: ['太平洋', '大西洋', '印度洋及東南亞', '北冰洋'], correct: 2, explanation: '指文萊以西的東南亞及印度洋海域。' },
+          { question: '榜葛剌國進貢的「麒麟」實際上是什麼？', options: ['大象', '長頸鹿', '獅子', '犀牛'], correct: 1, explanation: '實際上是長頸鹿。' },
+          { question: '鄭和在哪個地方設立了「官廠」？', options: ['占城', '滿剌加', '錫蘭', '古里'], correct: 1, explanation: '在滿剌加（馬六甲）設立了官廠作為補給基地。' },
+          { question: '鄭和艦隊的規模大約有多少人？', options: ['一千人', '五千人', '二萬七千人', '十萬人'], correct: 2, explanation: '首次出航約有二萬七千八百餘人。' },
+          { question: '鄭和下西洋後，明朝實行什麼政策導致衰退？', options: ['開放貿易', '海禁政策', '殖民擴張', '航海鼓勵'], correct: 1, explanation: '明朝後來實行海禁政策，停止了大規模遠航。' },
+          { question: '鄭和被賜姓「鄭」是因為？', options: ['出生鄭州', '靖難之役立功', '祖先姓鄭', '信奉神明'], correct: 1, explanation: '因在靖難之役（鄭村壩戰役）立功，朱棣賜姓鄭。' }
+      ];
+
+      const GAME_EVENTS = [
+        {
+            stage: 1, locationId: 'nanjing', icon: '🌊', title: '啟航・南海風雲',
+            description: '艦隊駛離劉家港，進入南海。前方烏雲密佈，風暴將至。',
+            choices: [
+                { title: '【穩健】避開風暴', effects: { trust: -10, morale: 5 }, successText: '行程延誤，皇帝對進度感到不滿。', autoSuccess: true },
+                { title: '【學識】觀星找航道', requirement: { stat: 'knowledge', value: 4 }, requirementText: '需學識≥4', effects: { trust: 10, morale: 5 }, failEffects: { trust: -15, morale: -20 }, successText: '利用牽星術成功穿越！', failText: '判斷失誤，船隻受損，信任大減。', needsChallenge: true },
+                { title: '【激勵】強行通過', requirement: { stat: 'connections', value: 3 }, requirementText: '需人脈≥3', effects: { trust: 15, morale: -10 }, failEffects: { trust: -5, morale: -30 }, successText: '船員爆發勇氣穿越風暴！', failText: '損失慘重，士氣低落。', needsChallenge: true }
+            ]
+        },
+        {
+            stage: 2, locationId: 'champa', icon: '🌴', title: '占城・初次邦交',
+            description: '抵達首站占城，國王態度謹慎，不知大明來意。',
+            choices: [
+                { title: '【威懾】展示實力', effects: { trust: 5, morale: 5 }, failEffects: { trust: -10, morale: -5 }, successText: '旌旗蔽日，國王震懾。', failText: '過於張揚，引發戒心，有損國體。', needsChallenge: true },
+                { title: '【和平】贈送禮物', requirementText: '耗銀20', cost: { silver: 20 }, effects: { trust: 0, morale: 5, connections: 1 }, successText: '建立友好關係，獲取補給。', autoSuccess: true },
+                { title: '【文化】展示文明', requirement: { stat: 'knowledge', value: 3 }, requirementText: '需學識≥3', effects: { trust: 5, morale: 5, knowledge: 1 }, successText: '軟實力外交贏得人心。', autoSuccess: true }
+            ]
+        },
+        {
+            stage: 3, locationId: 'palembang', icon: '🏴‍☠️', title: '舊港・海盜陳祖義',
+            description: '海盜王陳祖義盤據於此，假意歸降，實則暗藏殺機。',
+            choices: [
+                { title: '【武力】全力進攻', requirementText: '耗銀30', cost: { silver: 30 }, effects: { trust: 15, morale: -15 }, failEffects: { trust: -20, morale: -30 }, successText: '生擒陳祖義，威震南洋！', failText: '損失慘重，皇帝震怒。', needsChallenge: true },
+                { title: '【外交】談判招安', requirement: { stat: 'connections', value: 5 }, requirementText: '需人脈≥5', effects: { trust: 5, morale: 5, connections: 1 }, failEffects: { trust: -15, morale: -10 }, successText: '分化了海盜勢力。', failText: '談判破裂，使者被扣。', needsChallenge: true },
+                { title: '【智取】識破詐降', requirement: { stat: 'knowledge', value: 5 }, requirementText: '需學識≥5', effects: { trust: 20, morale: 5 }, failEffects: { trust: -10, morale: -15 }, successText: '將計就計，一舉殲滅！', failText: '計劃有漏，未能全殲。', needsChallenge: true },
+                { title: '【防禦】嚴加戒備', effects: { trust: -5, morale: -5 }, successText: '雖然保全了艦隊，但未能剿滅海盜，留有後患。', autoSuccess: true }
+            ]
+        },
+        { stage: 4, locationId: 'malacca', icon: '🏝️', title: '滿剌加・建立官廠', description: '抵達戰略要地滿剌加，暹羅在側虎視眈眈。', choices: [{ title: '冊封國王', effects: { trust: 10, morale: 5 }, successText: '兩國正式建交。', autoSuccess: true }, { title: '建立官廠', requirementText: '耗銀40', cost: { silver: 40 }, effects: { trust: 10, morale: 10, connections: 1 }, successText: '建立穩固補給基地。', autoSuccess: true }, { title: '調解紛爭', requirement: { stat: 'connections', value: 4 }, requirementText: '需人脈≥4', effects: { trust: 15, morale: 10, connections: 1 }, failEffects: { trust: -5, morale: -5 }, successText: '展現大國調停能力。', needsChallenge: true }] },
+        { stage: 5, locationId: 'semudera', icon: '🌋', title: '蘇門答臘・火山', description: '火山噴發，遮天蔽日，漁民驚慌逃難。', choices: [{ title: '緊急撤離', effects: { trust: -5, morale: 5 }, successText: '安全第一，全員撤離，但錯失考察機會。', autoSuccess: true }, { title: '救助災民', requirementText: '耗銀25', cost: { silver: 25 }, effects: { trust: 5, morale: 10 }, successText: '仁義之師，贏得民心。', autoSuccess: true }, { title: '科學觀察', requirement: { stat: 'knowledge', value: 4 }, requirementText: '需學識≥4', effects: { trust: 5, knowledge: 2 }, successText: '留下珍貴紀錄。', autoSuccess: true }] },
+        { stage: 6, locationId: 'ceylon', icon: '💎', title: '錫蘭・佛牙寺', description: '國王亞烈苦奈兒設伏，意圖劫持艦隊。', choices: [{ title: '突襲王宮', requirement: { stat: 'knowledge', value: 5 }, requirementText: '需學識≥5', effects: { trust: 25, morale: -5 }, failEffects: { trust: -20, morale: -20 }, successText: '識破詭計，生擒國王！', needsChallenge: true }, { title: '婉拒入宮', effects: { trust: 0, morale: 5 }, successText: '謹慎行事，避開陷阱。', autoSuccess: true }, { title: '參拜佛牙', requirement: { stat: 'connections', value: 5 }, requirementText: '需人脈≥5|耗銀30', cost: {silver:30}, effects: { trust: 10, connections:1 }, successText: '爭取了當地民心。', needsChallenge: true }] },
+        { stage: 7, locationId: 'indianocean', icon: '🌅', title: '印度洋・無風帶', description: '海面平靜如鏡，帆船無法動彈，淡水告急。', choices: [{ title: '嚴格配給', effects: { trust: 0, morale: -20 }, successText: '艱難度過危機，船員怨聲載道。', autoSuccess: true }, { title: '祭祀祈風', requirementText: '耗銀25', cost: { silver: 25 }, effects: { trust: 0, morale: 15 }, successText: '海神庇佑，風起帆揚！', autoSuccess: true }, { title: '科學應對', requirement: { stat: 'knowledge', value: 5 }, requirementText: '需學識≥5', effects: { trust: 10, knowledge: 1 }, successText: '利用洋流推進，展現智慧。', needsChallenge: true }] },
+        { 
+            stage: 8, locationId: 'calicut', icon: '🕌', title: '古里・香料貿易', description: '抵達西洋貿易中心，各國商賈雲集。', 
+            choices: [
+                { title: '簽訂協定', requirementText: '耗銀50', cost: { silver: 50 }, effects: { trust: 15, silver: 30 }, successText: '貿易獲利豐厚。', autoSuccess: true }, 
+                { title: '安撫商人', requirement: { stat: 'connections', value: 5 }, requirementText: '需人脈≥5', effects: { trust: 5, connections: 1 }, failEffects: { trust: -5, morale: -10 }, successText: '化解了商業敵意。', needsChallenge: true },
+                { title: '文化考察', requirement: { stat: 'knowledge', value: 4 }, requirementText: '需學識≥4', effects: { trust: 5, knowledge: 2 }, successText: '豐富了對西洋的認知。', autoSuccess: true },
+                { title: '【僅作補給】', effects: { trust: -5 }, successText: '完成了基本補給，空手而歸。', autoSuccess: true }
+            ] 
+        },
+        { stage: 9, locationId: 'hormuz', icon: '🏺', title: '忽魯謨斯・疫病', description: '港口爆發疫病，人心惶惶。', choices: [{ title: '隔離防疫', effects: { trust: -5, morale: -10 }, successText: '全艦無人感染，但錯失外交機會。', autoSuccess: true }, { title: '醫術救援', requirement: { stat: 'knowledge', value: 6 }, requirementText: '需學識≥6|耗銀30', cost: { silver: 30 }, effects: { trust: 20, morale: 10 }, failEffects: { trust: -15, morale: -20 }, successText: '妙手回春，大明醫術揚名海外。', needsChallenge: true }, { title: '快速補給', requirementText: '耗銀20', cost: { silver: 20 }, effects: { trust: 0, morale: 5 }, successText: '盡快離開了疫區。', autoSuccess: true }] },
+        { 
+            stage: 10, locationId: 'bengal', icon: '🦒', title: '榜葛剌・麒麟', description: '國王進貢神獸。長頸、斑紋...這真的是麒麟嗎？', 
+            choices: [
+                { title: '學識鑑定', requirement: { stat: 'knowledge', value: 5 }, requirementText: '需學識≥5', effects: { trust: 20, morale: 15, qilin: true }, failEffects: { trust: -20, morale: -5 }, successText: '確認為祥瑞麒麟！', failText: '無法確認，錯失良機，皇帝大失所望。', needsChallenge: true, isQilinEvent: true }, 
+                { title: '接受進貢', requirement: { stat: 'connections', value: 5 }, requirementText: '需人脈≥5', effects: { trust: 10, morale: 10 }, successText: '帶回珍禽異獸，皇帝還算滿意。', autoSuccess: true },
+                { title: '【謹慎行事】只接受貢品', effects: { trust: -5, morale: 5 }, successText: '穩妥起見，不帶回未知動物，錯失祥瑞。', autoSuccess: true }
+            ] 
+        }
+      ];
+
+      // --- SERVICES ---
+
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+
+      const SYSTEM_INSTRUCTION = `
+      你是一位精通明朝歷史和鄭和下西洋（三寶太監）的專家史官。
+      你正在為一款3D交互式冒險遊戲提供背景信息。
+      你的回答應當使用繁體中文，語氣古雅但易懂，富有教育意義且引人入勝。
+      當被問及某個地點時，解釋其對寶船艦隊的重要性，交易了什麼，以及發生了什麼重大事件（戰役、外交）。
+      如果用戶問一般性問題，請以博學的艦隊學者的口吻回答。
+      `;
+
+      const getLocationDetails = async (location) => {
+        try {
+          const response = await ai.models.generateContent({
+            model: 'gemini-3-flash-preview',
+            contents: `請描述 ${location.nameCn} (${location.name}) 在鄭和下西洋中的歷史重要性。提及貿易商品和外交關係。保持在150字以內。使用繁體中文。`,
+            config: {
+              systemInstruction: SYSTEM_INSTRUCTION,
+            }
+          });
+          return response.text || "暫無詳細信息。";
+        } catch (error) {
+          console.error("Gemini Error:", error);
+          return "無法獲取艦隊檔案。請檢查您的網絡連接或API金鑰。";
+        }
+      };
+
+      const chatWithHistorian = async (history, message) => {
+        try {
+          const chat = ai.chats.create({
+            model: 'gemini-3-flash-preview',
+            config: {
+              systemInstruction: SYSTEM_INSTRUCTION,
+            },
+            history: history
+          });
+
+          const response = await chat.sendMessage({ message });
+          return response.text || "我現在無法回答這個問題。";
+        } catch (error) {
+          console.error("Gemini Chat Error:", error);
+          return "與隨船史官的通訊中斷。";
+        }
+      };
+
+      // --- COMPONENTS ---
+
+      const GlobeViz = ({ locations, routes, activeLocationId }) => {
+        const globeEl = useRef(undefined);
+        const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+        useEffect(() => {
+          const handleResize = () => {
+            setDimensions({ width: window.innerWidth, height: window.innerHeight });
+          };
+          window.addEventListener('resize', handleResize);
+          return () => window.removeEventListener('resize', handleResize);
+        }, []);
+
+        useEffect(() => {
+          if (activeLocationId && globeEl.current) {
+              const loc = locations.find(l => l.id === activeLocationId);
+              if (loc) {
+                  globeEl.current.pointOfView({ lat: loc.lat, lng: loc.lng, altitude: 2.0 }, 2000);
+              }
+          }
+        }, [activeLocationId, locations]);
+
+        useEffect(() => {
+          if (globeEl.current && !activeLocationId) {
+            globeEl.current.pointOfView({ lat: 15, lng: 100, altitude: 2.5 }, 1000);
+            globeEl.current.controls().autoRotate = true;
+            globeEl.current.controls().autoRotateSpeed = 0.5;
+          } else if (globeEl.current && activeLocationId) {
+             globeEl.current.controls().autoRotate = false;
+          }
+        }, []);
+
+        const arcsData = useMemo(() => {
+          return routes.map(route => {
+            const startLoc = locations.find(l => l.id === route.start);
+            const endLoc = locations.find(l => l.id === route.end);
+            if (!startLoc || !endLoc) return null;
+
+            return {
+              startLat: startLoc.lat,
+              startLng: startLoc.lng,
+              endLat: endLoc.lat,
+              endLng: endLoc.lng,
+              color: ['#C5A059', '#8B1E1E'],
+            };
+          }).filter(Boolean);
+        }, [routes, locations]);
+
+        return (
+          <div className="absolute inset-0 z-0 cursor-move">
+            <Globe
+              ref={globeEl}
+              width={dimensions.width}
+              height={dimensions.height}
+              backgroundColor="rgba(0,0,0,0)"
+              globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg"
+              bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
+              htmlElementsData={locations}
+              htmlElement={(d) => {
+                const el = document.createElement('div');
+                const isSelected = d.id === activeLocationId;
+                el.innerHTML = `
+                  <div style="
+                    display: flex; 
+                    flex-direction: column; 
+                    align-items: center; 
+                    transform: translate(-50%, -50%);
+                    cursor: pointer;
+                  ">
+                    <div style="
+                      font-family: 'Noto Serif TC', serif; 
+                      color: ${isSelected ? '#FFD700' : '#F0E6D2'}; 
+                      font-weight: bold; 
+                      font-size: ${isSelected ? '18px' : '14px'};
+                      text-shadow: 2px 2px 4px #000;
+                      white-space: nowrap;
+                      margin-bottom: 4px;
+                    ">${d.nameCn}</div>
+                    <div style="
+                      width: ${isSelected ? '12px' : '8px'}; 
+                      height: ${isSelected ? '12px' : '8px'}; 
+                      background: ${isSelected ? '#FF4444' : '#C5A059'}; 
+                      border-radius: 50%; 
+                      border: 2px solid white;
+                      box-shadow: 0 0 10px ${isSelected ? '#FF4444' : 'black'};
+                    "></div>
+                  </div>
+                `;
+                return el;
+              }}
+              arcsData={arcsData || []}
+              arcColor="color"
+              arcDashLength={0.4}
+              arcDashGap={0.2}
+              arcDashAnimateTime={2000}
+              arcStroke={0.8}
+              atmosphereColor="#3a7bd5"
+              atmosphereAltitude={0.15}
+            />
+          </div>
+        );
+      };
+
+      const InfoPanel = ({ location }) => {
+        const [aiContent, setAiContent] = useState('');
+        const [loading, setLoading] = useState(false);
+
+        useEffect(() => {
+          if (location) {
+            setLoading(true);
+            setAiContent('');
+            getLocationDetails(location).then(text => {
+              setAiContent(text);
+              setLoading(false);
+            });
+          }
+        }, [location]);
+
+        if (!location) return null;
+
+        return (
+          <div className="bg-imperial-parchment border-2 border-imperial-ink/20 rounded-lg p-4 shadow-[0_4px_20px_rgba(0,0,0,0.3)] max-w-sm w-full animate-fadeIn text-imperial-ink relative overflow-hidden">
+            <div className="absolute inset-0 bg-imperial-gold/5 pointer-events-none"></div>
+
+            <div className="relative flex items-center gap-2 mb-3 border-b border-imperial-ink/20 pb-2">
+              <MapPin className="text-imperial-red" size={20} />
+              <h3 className="text-xl font-serif font-bold text-imperial-ink">{location.nameCn}</h3>
+            </div>
+
+            <div className="relative mb-4">
+              <span className="text-xs uppercase text-imperial-ink/60 font-bold block mb-1">特產</span>
+              <div className="flex gap-2 flex-wrap">
+                {location.tradeGoods.map(good => (
+                  <span key={good} className="px-2 py-1 bg-white/50 border border-imperial-ink/20 rounded text-xs text-imperial-ink font-serif flex items-center gap-1 shadow-sm">
+                    <Box size={12} className="text-imperial-gold" /> {good}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="flex items-center gap-2 mb-2">
+                <Ship size={16} className="text-imperial-gold" />
+                <h4 className="text-sm font-bold text-imperial-ink">史官考證</h4>
+              </div>
+              
+              {loading ? (
+                <div className="flex items-center gap-2 text-imperial-ink/50 text-sm h-20">
+                   <Loader2 size={14} className="animate-spin" /> 查詢檔案中...
+                </div>
+              ) : (
+                <p className="text-sm text-imperial-ink/80 leading-relaxed font-serif bg-white/30 p-2 rounded">
+                  {aiContent}
+                </p>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      const ChatInterface = () => {
+        const [isOpen, setIsOpen] = useState(false);
+        const [messages, setMessages] = useState([
+          { id: '1', role: 'model', text: '您好。我是隨船史官。關於艦隊的決策或風土人情，您儘管問。' }
+        ]);
+        const [input, setInput] = useState('');
+        const [loading, setLoading] = useState(false);
+        const scrollRef = useRef(null);
+
+        useEffect(() => {
+          if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+          }
+        }, [messages, isOpen]);
+
+        const handleSend = async () => {
+          if (!input.trim() || loading) return;
+
+          const userMsg = { id: Date.now().toString(), role: 'user', text: input };
+          setMessages(prev => [...prev, userMsg]);
+          setInput('');
+          setLoading(true);
+
+          const history = messages.map(m => ({
+            role: m.role,
+            parts: [{ text: m.text }]
+          }));
+
+          const responseText = await chatWithHistorian(history, userMsg.text);
+          
+          setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: responseText }]);
+          setLoading(false);
+        };
+
+        if (!isOpen) {
+          return (
+            <button 
+              onClick={() => setIsOpen(true)}
+              className="fixed bottom-6 right-6 z-50 bg-imperial-gold hover:bg-yellow-600 text-imperial-ink font-bold p-4 rounded-full shadow-xl transition-transform hover:scale-105 flex items-center gap-2 border-2 border-imperial-parchment"
+            >
+              <MessageSquare size={24} />
+              <span className="hidden md:inline font-serif">詢問史官</span>
+            </button>
+          );
+        }
+
+        return (
+          <div className="fixed bottom-6 right-6 z-50 w-[90vw] md:w-96 h-[400px] flex flex-col bg-imperial-parchment text-imperial-ink rounded-xl border-2 border-imperial-ink/30 shadow-2xl overflow-hidden font-serif">
+            <div className="flex items-center justify-between p-4 border-b border-imperial-ink/10 bg-imperial-gold/20">
+              <h3 className="font-bold text-imperial-ink flex items-center gap-2">
+                <span className="text-xl">📜</span> 隨船史官
+              </h3>
+              <button onClick={() => setIsOpen(false)} className="text-imperial-ink/50 hover:text-imperial-red transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-imperial-parchment">
+              {messages.map((msg) => (
+                <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[85%] rounded-lg p-3 text-sm shadow-sm ${
+                    msg.role === 'user' 
+                      ? 'bg-imperial-ocean text-white' 
+                      : 'bg-white border border-imperial-ink/10 text-imperial-ink'
+                  }`}>
+                    {msg.text}
+                  </div>
+                </div>
+              ))}
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="bg-white/50 text-imperial-ink/60 rounded-lg p-3 text-sm flex items-center gap-2">
+                    <Loader2 size={14} className="animate-spin" /> 查閱檔案中...
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t border-imperial-ink/10 bg-white/50">
+              <div className="flex items-center gap-2">
+                <input 
+                  type="text" 
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                  placeholder="詢問..."
+                  className="flex-1 bg-white border border-imperial-ink/20 text-imperial-ink rounded-md px-3 py-2 text-sm focus:outline-none focus:border-imperial-gold"
+                />
+                <button 
+                  onClick={handleSend}
+                  disabled={loading}
+                  className="bg-imperial-gold text-imperial-ink p-2 rounded-md hover:bg-yellow-600 disabled:opacity-50"
+                >
+                  <Send size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      // --- APP COMPONENT ---
+
+      const INITIAL_STATS = {
+        trust: 50,
+        morale: 50,
+        knowledge: 0,
+        connections: 0,
+        silver: 50,
+        hasQilin: false,
+        timeRemaining: 1800
+      };
+
+      const ModalWrapper = ({ children }) => (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-imperial-ocean/60 backdrop-blur-sm p-4 animate-fadeIn">
+           {children}
+        </div>
+      );
+
+      const PaperCard = ({ children, className = "" }) => (
+        <div className={`bg-imperial-parchment border-2 border-imperial-ink/30 rounded-xl shadow-2xl relative overflow-hidden text-imperial-ink font-serif ${className}`}>
+            <div className="absolute inset-0 bg-imperial-gold/5 pointer-events-none"></div>
+            <div className="relative z-10">{children}</div>
+        </div>
+      );
+
+      const App = () => {
+        const [phase, setPhase] = useState('intro');
+        const [stats, setStats] = useState(INITIAL_STATS);
+        const [currentEventIndex, setCurrentEventIndex] = useState(0);
+        const [currentEvent, setCurrentEvent] = useState(null);
+        const [isUiMinimized, setIsUiMinimized] = useState(false);
+        
+        const [quizQuestions, setQuizQuestions] = useState([]);
+        const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
+        const [quizScore, setQuizScore] = useState(0);
+        const [quizFeedback, setQuizFeedback] = useState(null);
+
+        const [pendingChoice, setPendingChoice] = useState(null);
+        const [activeChallengeQuestion, setActiveChallengeQuestion] = useState(null);
+        const [resultMessage, setResultMessage] = useState(null);
+        const [usedQuizIndices, setUsedQuizIndices] = useState([]);
+
+        useEffect(() => {
+          if (phase === 'playing' && stats.timeRemaining > 0) {
+            const timer = setInterval(() => {
+              setStats(prev => {
+                if (prev.timeRemaining <= 1) {
+                   setPhase('gameover');
+                   setResultMessage({success: false, text: "時間耗盡，艦隊未能按時返航。", changes: []});
+                   return prev;
+                }
+                return { ...prev, timeRemaining: prev.timeRemaining - 1 };
+              });
+            }, 1000);
+            return () => clearInterval(timer);
+          }
+        }, [phase, stats.timeRemaining]);
+
+        useEffect(() => {
+          if (phase === 'playing') {
+            if (stats.trust <= 0) {
+              setPhase('gameover');
+              setResultMessage({success: false, text: "皇帝震怒，下令召回艦隊，將你革職查辦。", changes: []});
+            } else if (stats.morale <= 0) {
+              setPhase('gameover');
+              setResultMessage({success: false, text: "水手譁變，艦隊分崩離析。", changes: []});
+            }
+          }
+        }, [stats, phase]);
+
+        const shuffleQuiz = () => {
+          const shuffled = [...QUIZ_QUESTIONS].sort(() => 0.5 - Math.random());
+          setQuizQuestions(shuffled.slice(0, 5));
+          setUsedQuizIndices(shuffled.slice(0, 5).map(q => QUIZ_QUESTIONS.indexOf(q)));
+        };
+
+        const startQuiz = () => {
+          shuffleQuiz();
+          setPhase('quiz');
+        };
+
+        const handleQuizAnswer = (idx) => {
+          const q = quizQuestions[currentQuizIndex];
+          const isCorrect = idx === q.correct;
+          if (isCorrect) setQuizScore(s => s + 1);
+          setQuizFeedback({
+            correct: isCorrect,
+            text: q.explanation
+          });
+        };
+
+        const nextQuizQuestion = () => {
+          setQuizFeedback(null);
+          if (currentQuizIndex < 4) {
+            setCurrentQuizIndex(i => i + 1);
+          } else {
+            finishQuiz();
+          }
+        };
+
+        const finishQuiz = () => {
+          const baseStats = { ...INITIAL_STATS };
+          baseStats.trust = 50 + quizScore * 5;
+          baseStats.morale = 60 + quizScore * 5;
+          baseStats.silver = 80 + quizScore * 10;
+          
+          if (quizScore === 5) {
+            baseStats.knowledge = 5;
+            baseStats.connections = 5;
+          } else {
+            baseStats.knowledge = 2 + Math.floor(quizScore / 2);
+            baseStats.connections = 2 + Math.floor(quizScore / 2);
+          }
+          
+          setStats(baseStats);
+          setPhase('playing');
+          loadEvent(0);
+        };
+
+        const loadEvent = (idx) => {
+          if (idx >= GAME_EVENTS.length) {
+            finishGame();
+            return;
+          }
+          setCurrentEventIndex(idx);
+          setCurrentEvent(GAME_EVENTS[idx]);
+        };
+
+        const handleChoice = (choice) => {
+          if (choice.cost && stats.silver < choice.cost.silver) return;
+
+          if (choice.cost) {
+            setStats(s => ({...s, silver: s.silver - choice.cost.silver}));
+          }
+
+          if (choice.needsChallenge) {
+            setPendingChoice(choice);
+            const availableIndices = QUIZ_QUESTIONS.map((_, i) => i).filter(i => !usedQuizIndices.includes(i));
+            const nextIdx = availableIndices.length > 0 
+              ? availableIndices[Math.floor(Math.random() * availableIndices.length)] 
+              : Math.floor(Math.random() * QUIZ_QUESTIONS.length);
+            
+            setUsedQuizIndices(prev => [...prev, nextIdx]);
+            setActiveChallengeQuestion(QUIZ_QUESTIONS[nextIdx]);
+            setPhase('challenge');
+          } else {
+            applyEffects(choice.effects, choice.successText, true, choice.isQilinEvent);
+          }
+        };
+
+        const handleChallengeAnswer = (idx) => {
+          if (!activeChallengeQuestion || !pendingChoice) return;
+          const isCorrect = idx === activeChallengeQuestion.correct;
+          
+          setQuizFeedback({
+              correct: isCorrect,
+              text: activeChallengeQuestion.explanation
+          });
+
+          setTimeout(() => {
+              setQuizFeedback(null);
+              if (isCorrect) {
+                applyEffects(pendingChoice.effects, pendingChoice.successText, true, pendingChoice.isQilinEvent);
+              } else {
+                applyEffects(pendingChoice.failEffects || {}, pendingChoice.failText || "判定失敗", false, false);
+              }
+          }, 2000);
+        };
+
+        const applyEffects = (effects, text, success, isQilin = false) => {
+          const changes = [];
+          setStats(prev => {
+            const next = { ...prev };
+            if (effects.trust) { next.trust = Math.min(100, Math.max(0, next.trust + effects.trust)); changes.push(`信任 ${effects.trust > 0 ? '+' : ''}${effects.trust}`); }
+            if (effects.morale) { next.morale = Math.min(100, Math.max(0, next.morale + effects.morale)); changes.push(`士氣 ${effects.morale > 0 ? '+' : ''}${effects.morale}`); }
+            if (effects.knowledge) { next.knowledge += effects.knowledge; changes.push(`學識 +${effects.knowledge}`); }
+            if (effects.connections) { next.connections += effects.connections; changes.push(`人脈 +${effects.connections}`); }
+            if (effects.silver) { next.silver += effects.silver; changes.push(`銀兩 ${effects.silver > 0 ? '+' : ''}${effects.silver}`); }
+            if (success && isQilin) { next.hasQilin = true; changes.push("獲得麒麟！"); }
+            return next;
+          });
+
+          setResultMessage({ success, text, changes });
+          setPhase('result');
+        };
+
+        const nextTurn = () => {
+          setPhase('playing');
+          setResultMessage(null);
+          setPendingChoice(null);
+          loadEvent(currentEventIndex + 1);
+        };
+
+        const finishGame = () => {
+          setPhase('victory');
+        };
+
+        const formatTime = (sec) => {
+          const m = Math.floor(sec / 60);
+          const s = sec % 60;
+          return `${m}:${s < 10 ? '0' + s : s}`;
+        };
+
+        const getFinalGrade = () => {
+          if (stats.trust >= 90 && stats.hasQilin && stats.morale >= 80) return 'S';
+          if (stats.trust >= 80) return 'A';
+          if (stats.trust >= 60) return 'B';
+          return 'C';
+        };
+
+        return (
+          <div className="relative w-full h-screen overflow-hidden font-sans">
+            <GlobeViz 
+              locations={LOCATIONS} 
+              routes={ROUTES} 
+              activeLocationId={currentEvent?.locationId}
+            />
+
+            {(phase === 'playing' || phase === 'result' || phase === 'challenge') && (
+              <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none">
+                <div className="absolute inset-0 h-32 bg-gradient-to-b from-imperial-ocean/90 to-transparent pointer-events-none" />
+                
+                <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between p-4 max-w-7xl mx-auto w-full gap-4">
+                   <div className="flex flex-col gap-2 w-full md:w-auto pointer-events-auto">
+                      <div className="flex items-center gap-4 bg-imperial-parchment/90 backdrop-blur-md p-2 rounded-lg border border-imperial-ink/20 shadow-lg text-imperial-ink">
+                          <div className="flex items-center gap-2 px-2">
+                              <Clock size={18} className="text-imperial-red" />
+                              <span className={`font-mono font-bold text-lg ${stats.timeRemaining < 180 ? 'text-imperial-red animate-pulse' : 'text-imperial-ink'}`}>
+                                  {formatTime(stats.timeRemaining)}
+                              </span>
+                          </div>
+                          <div className="h-8 w-[1px] bg-imperial-ink/20"></div>
+                          <div className="flex gap-4 px-2">
+                              <div className="flex flex-col">
+                                  <span className="text-[10px] text-imperial-ink/60 uppercase tracking-wider font-bold">皇帝信任</span>
+                                  <div className="flex items-center gap-2">
+                                      <div className="w-24 h-2 bg-imperial-ink/10 rounded-full overflow-hidden border border-imperial-ink/10">
+                                          <div className="h-full bg-game-trust transition-all duration-500" style={{width: `${stats.trust}%`}}></div>
+                                      </div>
+                                      <span className="text-xs font-bold">{stats.trust}</span>
+                                  </div>
+                              </div>
+                              <div className="flex flex-col">
+                                  <span className="text-[10px] text-imperial-ink/60 uppercase tracking-wider font-bold">部下士氣</span>
+                                  <div className="flex items-center gap-2">
+                                      <div className="w-24 h-2 bg-imperial-ink/10 rounded-full overflow-hidden border border-imperial-ink/10">
+                                          <div className="h-full bg-game-morale transition-all duration-500" style={{width: `${stats.morale}%`}}></div>
+                                      </div>
+                                      <span className="text-xs font-bold">{stats.morale}</span>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                   </div>
+
+                   <div className="flex gap-3 text-xs md:text-sm pointer-events-auto bg-imperial-parchment/90 backdrop-blur-md p-2 rounded-lg border border-imperial-ink/20 shadow-lg font-serif font-bold text-imperial-ink">
+                      <span className="flex items-center gap-1 px-2"><span className="text-imperial-gold text-lg">📜</span> 學識 {stats.knowledge}</span>
+                      <span className="flex items-center gap-1 px-2 border-l border-imperial-ink/10"><span className="text-imperial-gold text-lg">🤝</span> 人脈 {stats.connections}</span>
+                      <span className="flex items-center gap-1 px-2 border-l border-imperial-ink/10"><span className="text-imperial-gold text-lg">💰</span> 銀兩 {stats.silver}</span>
+                      {stats.hasQilin && <span className="flex items-center gap-1 px-2 border-l border-imperial-ink/10 text-imperial-red font-bold">🦒 麒麟</span>}
+                   </div>
+                </div>
+              </div>
+            )}
+
+            {phase === 'playing' && currentEvent && (
+                <div className="absolute top-28 right-4 z-20 pointer-events-none flex flex-col items-end gap-2">
+                    <div className="pointer-events-auto">
+                         <InfoPanel location={LOCATIONS.find(l => l.id === currentEvent.locationId) || null} />
+                    </div>
+                </div>
+            )}
+
+            {phase === 'playing' && currentEvent && (
+              <div className={`absolute left-0 bottom-0 md:left-8 md:bottom-8 z-20 flex flex-col items-start p-2 md:p-0 pointer-events-none transition-all duration-500 ${isUiMinimized ? 'translate-y-[85%]' : 'translate-y-0'}`}>
+                  <PaperCard className="pointer-events-auto max-w-md w-full">
+                      <div className="p-6">
+                          <button 
+                              onClick={() => setIsUiMinimized(!isUiMinimized)}
+                              className="absolute top-2 right-2 text-imperial-ink/40 hover:text-imperial-ink p-1 hover:bg-imperial-ink/5 rounded"
+                          >
+                              {isUiMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
+                          </button>
+
+                          <div className="flex items-center gap-3 mb-4 border-b border-imperial-ink/10 pb-3 pr-8">
+                              <span className="text-4xl filter drop-shadow-sm">{currentEvent.icon}</span>
+                              <div>
+                                  <div className="text-xs uppercase text-imperial-red font-bold tracking-widest mb-1">第 {currentEvent.stage} 航段</div>
+                                  <h2 className="text-2xl font-serif font-bold text-imperial-ink">{currentEvent.title}</h2>
+                              </div>
+                          </div>
+
+                          <div className={`transition-opacity duration-300 ${isUiMinimized ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
+                              <p className="text-imperial-ink/80 mb-6 leading-relaxed text-base font-serif border-l-4 border-imperial-gold pl-3 bg-imperial-gold/5 py-2 rounded-r">
+                                  {currentEvent.description}
+                              </p>
+
+                              <div className="grid gap-3">
+                                  {currentEvent.choices.map((choice, i) => {
+                                      const canAfford = !choice.cost || stats.silver >= choice.cost.silver;
+                                      let reqMet = true;
+                                      if (choice.requirement) {
+                                          reqMet = stats[choice.requirement.stat] >= choice.requirement.value;
+                                      }
+
+                                      return (
+                                          <button 
+                                              key={i}
+                                              onClick={() => handleChoice(choice)}
+                                              disabled={!canAfford}
+                                              className={`text-left p-3 rounded-lg border-2 transition-all group relative overflow-hidden ${
+                                                  canAfford 
+                                                  ? 'bg-white border-imperial-ink/10 hover:border-imperial-gold hover:shadow-md' 
+                                                  : 'bg-gray-200 border-gray-300 opacity-60 cursor-not-allowed'
+                                              }`}
+                                          >
+                                              <div className="flex justify-between items-center relative z-10">
+                                                  <span className={`font-bold text-base font-serif ${canAfford ? 'group-hover:text-imperial-red' : ''} transition-colors`}>{choice.title}</span>
+                                                  <div className="text-xs flex flex-col items-end gap-0.5 font-sans">
+                                                      {choice.requirementText && (
+                                                          <span className={`${reqMet ? 'text-game-morale' : 'text-imperial-red font-bold'}`}>
+                                                              {choice.requirementText}
+                                                          </span>
+                                                      )}
+                                                      {choice.cost && (
+                                                          <span className={`${canAfford ? 'text-imperial-gold' : 'text-imperial-red font-bold'}`}>
+                                                              耗銀 {choice.cost.silver}
+                                                          </span>
+                                                      )}
+                                                  </div>
+                                              </div>
+                                          </button>
+                                      );
+                                  })}
+                              </div>
+                          </div>
+                      </div>
+                  </PaperCard>
+              </div>
+            )}
+
+            {phase === 'intro' && (
+              <ModalWrapper>
+                <div className="max-w-2xl w-full text-center">
+                  <h1 className="text-6xl md:text-8xl font-serif text-imperial-gold mb-2 drop-shadow-lg" style={{textShadow: '0 4px 10px rgba(0,0,0,0.5)'}}>大明遠航</h1>
+                  <h2 className="text-3xl text-imperial-parchment mb-8 font-serif tracking-widest text-shadow-sm">麒麟之誓</h2>
+                  
+                  <PaperCard className="p-8 mb-8 text-left space-y-4 leading-relaxed text-lg">
+                      <p>永樂三年，大明皇帝朱棣命你出使西洋。此行路途凶險，伴君如伴虎。</p>
+                      <p>你將經歷<strong className="text-imperial-red">十個航段</strong>。請注意：皇帝的耐心是有限的，任何有損國威或延誤行程的決定，都可能導致信任崩塌。</p>
+                      <p>啟航前，需通過<strong className="text-imperial-gold bg-imperial-ink text-white px-2 py-0.5 rounded">歷史知識測試</strong>決定初始能力！</p>
+                  </PaperCard>
+
+                  <button onClick={startQuiz} className="bg-imperial-gold text-imperial-ink font-bold py-3 px-10 rounded-full text-xl hover:bg-yellow-500 transition-all hover:scale-105 shadow-xl border-2 border-imperial-parchment">
+                      開始測試
+                  </button>
+                </div>
+              </ModalWrapper>
+            )}
+
+            {phase === 'quiz' && (
+              <ModalWrapper>
+                <PaperCard className="max-w-xl w-full p-8">
+                  <div className="flex justify-between items-center mb-6 border-b border-imperial-ink/10 pb-4">
+                      <h3 className="text-imperial-red text-2xl font-bold">航海知識測試</h3>
+                      <span className="text-imperial-ink/50 font-bold">第 {currentQuizIndex + 1} / 5 題</span>
+                  </div>
+                  
+                  <p className="text-xl mb-8 font-serif font-bold">{quizQuestions[currentQuizIndex]?.question}</p>
+                  
+                  <div className="space-y-3">
+                      {quizQuestions[currentQuizIndex]?.options.map((opt, i) => (
+                          <button 
+                              key={i}
+                              onClick={() => !quizFeedback && handleQuizAnswer(i)}
+                              disabled={!!quizFeedback}
+                              className={`w-full p-4 rounded-lg text-left border-2 transition-all font-serif text-lg ${
+                                  quizFeedback 
+                                      ? i === quizQuestions[currentQuizIndex].correct 
+                                          ? 'bg-green-100 border-green-500 text-green-900' 
+                                          : 'bg-gray-100 border-gray-300 opacity-50'
+                                      : 'bg-white border-imperial-ink/10 hover:border-imperial-gold hover:bg-imperial-gold/5'
+                              }`}
+                          >
+                              {opt}
+                          </button>
+                      ))}
+                  </div>
+
+                  {quizFeedback && (
+                      <div className={`mt-6 p-4 rounded-lg border-2 ${quizFeedback.correct ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-800'} animate-fadeIn`}>
+                          <p className="font-bold mb-1 text-lg">{quizFeedback.correct ? '✅ 正確' : '❌ 錯誤'}</p>
+                          <p className="">{quizFeedback.text}</p>
+                          <button onClick={nextQuizQuestion} className="mt-4 w-full bg-imperial-gold text-imperial-ink font-bold py-2 rounded shadow-md hover:bg-yellow-500 transition-colors">
+                              下一題
+                          </button>
+                      </div>
+                  )}
+                </PaperCard>
+              </ModalWrapper>
+            )}
+
+            {phase === 'challenge' && activeChallengeQuestion && (
+              <ModalWrapper>
+                   <PaperCard className="max-w-lg w-full p-8 text-center border-imperial-red/50">
+                      <AlertTriangle size={48} className="mx-auto text-imperial-red mb-4" />
+                      <h3 className="text-2xl font-bold mb-2">命運抉擇：知識考驗</h3>
+                      <p className="text-imperial-ink/60 mb-6 text-sm">通過考驗以執行此決策...</p>
+                      
+                      <p className="text-lg font-serif mb-6 text-left font-bold">{activeChallengeQuestion.question}</p>
+                      
+                      <div className="space-y-3">
+                          {activeChallengeQuestion.options.map((opt, i) => (
+                              <button
+                                  key={i}
+                                  onClick={() => !quizFeedback && handleChallengeAnswer(i)}
+                                  className={`w-full p-3 rounded border-2 text-left font-serif ${
+                                      quizFeedback 
+                                      ? i === activeChallengeQuestion.correct 
+                                          ? 'bg-green-100 border-green-500 text-green-900' 
+                                          : 'bg-gray-100 border-gray-300 opacity-50'
+                                      : 'bg-white border-imperial-ink/20 hover:border-imperial-gold'
+                                  }`}
+                              >
+                                  {opt}
+                              </button>
+                          ))}
+                      </div>
+                      {quizFeedback && (
+                          <div className="mt-4 text-sm text-imperial-ink/80 animate-fadeIn bg-imperial-gold/10 p-2 rounded">
+                              {quizFeedback.text}
+                          </div>
+                      )}
+                   </PaperCard>
+              </ModalWrapper>
+            )}
+
+            {phase === 'result' && resultMessage && (
+              <ModalWrapper>
+                  <PaperCard className="max-w-md w-full p-8 text-center">
+                      <div className="text-6xl mb-4">{resultMessage.success ? '✅' : '⚠️'}</div>
+                      <h3 className={`text-2xl font-bold mb-4 ${resultMessage.success ? 'text-game-morale' : 'text-game-trust'}`}>
+                          {resultMessage.success ? '執行成功' : '遭遇困難'}
+                      </h3>
+                      <p className="text-imperial-ink mb-6 leading-relaxed text-lg">{resultMessage.text}</p>
+                      
+                      <div className="flex flex-wrap justify-center gap-2 mb-8">
+                          {resultMessage.changes.map((c, i) => (
+                              <span key={i} className={`px-2 py-1 rounded text-sm font-bold border ${c.includes('+') ? 'border-game-morale text-game-morale bg-game-morale/10' : 'border-game-trust text-game-trust bg-game-trust/10'}`}>
+                                  {c}
+                              </span>
+                          ))}
+                      </div>
+
+                      <button onClick={nextTurn} className="bg-imperial-gold text-imperial-ink font-bold py-3 px-8 rounded-full hover:bg-yellow-500 w-full transition-transform hover:scale-105 shadow-md">
+                          繼續航行
+                      </button>
+                  </PaperCard>
+              </ModalWrapper>
+            )}
+
+            {(phase === 'victory' || phase === 'gameover') && (
+              <ModalWrapper>
+                   <PaperCard className="max-w-2xl w-full p-8 text-center border-4 border-imperial-gold">
+                      {phase === 'victory' ? (
+                          <>
+                              <div className="text-8xl font-serif text-imperial-red mb-2 drop-shadow-sm font-bold">
+                                  {getFinalGrade()}
+                              </div>
+                              <h2 className="text-3xl font-bold text-imperial-ink mb-6">航行結束</h2>
+                              <div className="bg-white/50 rounded-lg p-6 mb-8 text-left space-y-2 border border-imperial-ink/10">
+                                   <p className="text-lg">最終信任: <span className="text-imperial-red font-bold">{stats.trust}</span></p>
+                                   <p className="text-lg">最終士氣: <span className="text-game-morale font-bold">{stats.morale}</span></p>
+                                   <p className="text-lg">麒麟祥瑞: {stats.hasQilin ? '🦒 已帶回' : '❌ 未獲得'}</p>
+                                   <hr className="border-imperial-ink/20 my-4"/>
+                                   <p className="italic text-imperial-ink/70">
+                                      {getFinalGrade() === 'S' && "最高榮耀！你帶回了麒麟，象徵國力強盛。鄭和下西洋不僅是航海壯舉，更是和平外交的典範。"}
+                                      {getFinalGrade() === 'A' && "光榮歸航。雖無麒麟，但外交成果豐碩，展現了和平崛起的理念。"}
+                                      {getFinalGrade() === 'B' && "平安歸來。航行雖有波折，但最終平安。海洋政策的興衰值得深思。"}
+                                      {getFinalGrade() === 'C' && "勉強及格。損失不小，決策需更周全。"}
+                                   </p>
+                              </div>
+                          </>
+                      ) : (
+                          <>
+                              <Skull size={80} className="mx-auto text-imperial-ink/80 mb-6" />
+                              <h2 className="text-3xl font-bold text-imperial-red mb-4">航行失敗</h2>
+                              <p className="text-xl text-imperial-ink mb-8">{resultMessage?.text}</p>
+                          </>
+                      )}
+                      
+                      <button onClick={() => window.location.reload()} className="bg-imperial-gold text-imperial-ink font-bold py-3 px-8 rounded-full hover:bg-yellow-500 transition-transform hover:scale-105 shadow-xl">
+                          重新挑戰
+                      </button>
+                   </PaperCard>
+              </ModalWrapper>
+            )}
+
+            <ChatInterface />
+          </div>
+        );
+      };
+
+      const root = ReactDOM.createRoot(document.getElementById('root'));
+      root.render(
+        <React.StrictMode>
+          <App />
+        </React.StrictMode>
+      );
+    </script>
   </body>
 </html>
