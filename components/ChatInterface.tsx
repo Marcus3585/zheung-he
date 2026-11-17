@@ -1,12 +1,14 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { MessageSquare, Send, X, Loader2 } from 'lucide-react';
-import { chatWithHistorian } from '../services/gemini';
+import { answerHistorian } from '../services/historian';
+import { ILLUSTRATIONS } from '../constants';
 import { ChatMessage } from '../types';
+import HistoricImage from './HistoricImage';
 
 const ChatInterface: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: '1', role: 'model', text: '您好。我是隨船史官。關於艦隊的決策或風土人情，您儘管問。' }
+    { id: '1', role: 'model', text: '艙燈還亮着。航路、港口，或是這艘船為甚麼造成這樣，你直接問就行。' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -26,15 +28,16 @@ const ChatInterface: React.FC = () => {
     setInput('');
     setLoading(true);
 
-    const history = messages.map(m => ({
-      role: m.role,
-      parts: [{ text: m.text }]
-    }));
-
-    const responseText = await chatWithHistorian(history, userMsg.text);
-    
-    setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: responseText }]);
-    setLoading(false);
+    try {
+      const responseText = answerHistorian(userMsg.text, messages.map(m => ({ role: m.role, text: m.text })));
+      await new Promise(resolve => setTimeout(resolve, 160));
+      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: responseText }]);
+    } catch (error) {
+      console.error(error);
+      setMessages(prev => [...prev, { id: (Date.now() + 1).toString(), role: 'model', text: '簿子這一頁被風掀過去了。你再問一次港口或某一次航行，我接着說。' }]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) {
@@ -51,11 +54,17 @@ const ChatInterface: React.FC = () => {
 
   return (
     <div className="fixed bottom-6 right-6 z-50 w-[90vw] md:w-96 h-[400px] flex flex-col bg-imperial-parchment text-imperial-ink rounded-xl border-2 border-imperial-ink/30 shadow-2xl overflow-hidden font-serif">
-      <div className="flex items-center justify-between p-4 border-b border-imperial-ink/10 bg-imperial-gold/20">
-        <h3 className="font-bold text-imperial-ink flex items-center gap-2">
+      <div className="relative flex items-center justify-between p-4 border-b border-imperial-ink/10 min-h-[4.5rem] overflow-hidden">
+        <HistoricImage
+          src={ILLUSTRATIONS.historian.src}
+          alt={ILLUSTRATIONS.historian.alt}
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-imperial-parchment via-imperial-parchment/92 to-imperial-parchment/55" />
+        <h3 className="relative font-bold text-imperial-ink flex items-center gap-2">
           <span className="text-xl">📜</span> 隨船史官
         </h3>
-        <button onClick={() => setIsOpen(false)} className="text-imperial-ink/50 hover:text-imperial-red transition-colors">
+        <button onClick={() => setIsOpen(false)} className="relative text-imperial-ink/50 hover:text-imperial-red transition-colors">
           <X size={18} />
         </button>
       </div>
