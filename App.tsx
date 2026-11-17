@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import GlobeViz from './components/GlobeViz.tsx';
-import InfoPanel from './components/InfoPanel.tsx';
-import ChatInterface from './components/ChatInterface.tsx';
-import { LOCATIONS, ROUTES, GAME_EVENTS, QUIZ_QUESTIONS } from './constants.ts';
-import { GameStats, GameEvent, GameChoice, QuizQuestion } from './types.ts';
-import { Clock, AlertTriangle, Skull, Minimize2, Maximize2 } from 'lucide-react';
+import GlobeViz from './components/GlobeViz';
+import InfoPanel from './components/InfoPanel';
+import ChatInterface from './components/ChatInterface';
+import AssessmentPanel from './components/AssessmentPanel';
+import RegistrationPanel from './components/RegistrationPanel';
+import { LOCATIONS, ROUTES, GAME_EVENTS, HISTORY_MILESTONES, QUIZ_QUESTIONS } from './constants';
+import { GameStats, GameEvent, GameChoice, QuizQuestion, StudentProfile } from './types';
+import { Clock, AlertTriangle, Skull, Minimize2, Maximize2, BookOpen, Anchor, ChevronLeft, ChevronRight, Home, GraduationCap } from 'lucide-react';
 
 const INITIAL_STATS: GameStats = {
   trust: 50,
@@ -16,16 +18,16 @@ const INITIAL_STATS: GameStats = {
   timeRemaining: 1800 // 30 mins
 };
 
-type GamePhase = 'intro' | 'quiz' | 'playing' | 'challenge' | 'result' | 'gameover' | 'victory';
+type GamePhase = 'registration' | 'intro' | 'quiz' | 'playing' | 'challenge' | 'result' | 'gameover' | 'victory' | 'history' | 'assessment';
 
-// Moved components outside to fix children prop type errors and prevent re-creation on render
-const ModalWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+// Common wrapper class for modals to ensure consistent styling
+const ModalWrapper = ({ children }: { children?: React.ReactNode }) => (
   <div className="absolute inset-0 z-50 flex items-center justify-center bg-imperial-ocean/60 backdrop-blur-sm p-4 animate-fadeIn">
-     {children}
+      {children}
   </div>
 );
 
-const PaperCard: React.FC<{ children: React.ReactNode, className?: string }> = ({ children, className = "" }) => (
+const PaperCard = ({ children, className = "" }: { children?: React.ReactNode, className?: string }) => (
   <div className={`bg-imperial-parchment border-2 border-imperial-ink/30 rounded-xl shadow-2xl relative overflow-hidden text-imperial-ink font-serif ${className}`}>
       {/* Paper texture feel */}
       <div className="absolute inset-0 bg-imperial-gold/5 pointer-events-none"></div>
@@ -35,17 +37,24 @@ const PaperCard: React.FC<{ children: React.ReactNode, className?: string }> = (
 
 const App: React.FC = () => {
   // Game State
-  const [phase, setPhase] = useState<GamePhase>('intro');
+  const [phase, setPhase] = useState<GamePhase>('registration');
   const [stats, setStats] = useState<GameStats>(INITIAL_STATS);
   const [currentEventIndex, setCurrentEventIndex] = useState(0);
   const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null);
+  
+  // Student Data
+  const [studentProfiles, setStudentProfiles] = useState<StudentProfile[]>([]);
+
+  // History State
+  const [currentHistoryIndex, setCurrentHistoryIndex] = useState(0);
+  
   const [isUiMinimized, setIsUiMinimized] = useState(false);
   
   // Quiz State
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
   const [quizScore, setQuizScore] = useState(0);
-  const [quizFeedback, setQuizFeedback] = useState<{correct: boolean, text: string} | null>(null);
+  const [quizFeedback, setQuizFeedback] = useState<{correct: boolean, text: string, selectedId: number | null} | null>(null);
 
   // Challenge/Result State
   const [pendingChoice, setPendingChoice] = useState<GameChoice | null>(null);
@@ -83,17 +92,52 @@ const App: React.FC = () => {
     }
   }, [stats, phase]);
 
+  // Determine Active Location ID based on phase
+  const getActiveLocationId = () => {
+    if (phase === 'history') {
+      return HISTORY_MILESTONES[currentHistoryIndex]?.locationId;
+    }
+    return currentEvent?.locationId;
+  };
+
   // --- Logic Functions ---
 
+  const handleRegistrationComplete = (profiles: StudentProfile[]) => {
+    setStudentProfiles(profiles);
+    setPhase('intro');
+  };
+
   const shuffleQuiz = () => {
-    const shuffled = [...QUIZ_QUESTIONS].sort(() => 0.5 - Math.random());
-    setQuizQuestions(shuffled.slice(0, 5));
-    setUsedQuizIndices(shuffled.slice(0, 5).map(q => QUIZ_QUESTIONS.indexOf(q)));
+    // Logic to select 5 unique questions that haven't been used yet (though initially usedQuizIndices is likely empty)
+    // 1. Create a list of all possible indices
+    const allIndices = Array.from({ length: QUIZ_QUESTIONS.length }, (_, i) => i);
+    
+    // 2. Filter out already used ones (if any, though usually this runs at start)
+    const availableIndices = allIndices.filter(i => !usedQuizIndices.includes(i));
+    
+    // 3. Shuffle the available indices
+    const shuffled = availableIndices.sort(() => 0.5 - Math.random());
+    
+    // 4. Take the first 5 (or fewer if we ran out)
+    const selectedIndices = shuffled.slice(0, 5);
+    
+    // 5. Map back to question objects
+    const selectedQuestions = selectedIndices.map(i => QUIZ_QUESTIONS[i]);
+
+    setQuizQuestions(selectedQuestions);
+    
+    // 6. Update the used indices state so these aren't picked for challenges later
+    setUsedQuizIndices(prev => [...prev, ...selectedIndices]);
   };
 
   const startQuiz = () => {
     shuffleQuiz();
     setPhase('quiz');
+  };
+
+  const startHistoryMode = () => {
+    setPhase('history');
+    setCurrentHistoryIndex(0);
   };
 
   const handleQuizAnswer = (idx: number) => {
@@ -102,7 +146,8 @@ const App: React.FC = () => {
     if (isCorrect) setQuizScore(s => s + 1);
     setQuizFeedback({
       correct: isCorrect,
-      text: q.explanation
+      text: q.explanation,
+      selectedId: idx
     });
   };
 
@@ -153,11 +198,21 @@ const App: React.FC = () => {
 
     if (choice.needsChallenge) {
       setPendingChoice(choice);
-      // Pick a random unused question
-      const availableIndices = QUIZ_QUESTIONS.map((_, i) => i).filter(i => !usedQuizIndices.includes(i));
-      const nextIdx = availableIndices.length > 0 
-        ? availableIndices[Math.floor(Math.random() * availableIndices.length)] 
-        : Math.floor(Math.random() * QUIZ_QUESTIONS.length);
+      
+      // Select a question that HASN'T been used yet
+      // 1. Find all indices not in usedQuizIndices
+      const allIndices = Array.from({ length: QUIZ_QUESTIONS.length }, (_, i) => i);
+      const availableIndices = allIndices.filter(i => !usedQuizIndices.includes(i));
+      
+      let nextIdx: number;
+      
+      if (availableIndices.length > 0) {
+        // Pick random from available
+        nextIdx = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+      } else {
+        // Fallback: If we exhausted all questions, pick any random one (rare case)
+        nextIdx = Math.floor(Math.random() * QUIZ_QUESTIONS.length);
+      }
       
       setUsedQuizIndices(prev => [...prev, nextIdx]);
       setActiveChallengeQuestion(QUIZ_QUESTIONS[nextIdx]);
@@ -173,7 +228,8 @@ const App: React.FC = () => {
     
     setQuizFeedback({
         correct: isCorrect,
-        text: activeChallengeQuestion.explanation
+        text: activeChallengeQuestion.explanation,
+        selectedId: idx
     });
 
     // Delay to show feedback before result
@@ -211,6 +267,18 @@ const App: React.FC = () => {
     loadEvent(currentEventIndex + 1);
   };
 
+  const historyNext = () => {
+    if (currentHistoryIndex < HISTORY_MILESTONES.length - 1) {
+      setCurrentHistoryIndex(currentHistoryIndex + 1);
+    }
+  };
+
+  const historyPrev = () => {
+    if (currentHistoryIndex > 0) {
+      setCurrentHistoryIndex(currentHistoryIndex - 1);
+    }
+  };
+
   const finishGame = () => {
     setPhase('victory');
   };
@@ -229,16 +297,19 @@ const App: React.FC = () => {
     return 'C';
   };
 
+  const currentHistoryEvent = phase === 'history' ? HISTORY_MILESTONES[currentHistoryIndex] : null;
+
   return (
     <div className="relative w-full h-screen overflow-hidden font-sans">
       {/* 3D Background */}
       <GlobeViz 
         locations={LOCATIONS} 
         routes={ROUTES} 
-        activeLocationId={currentEvent?.locationId}
+        activeLocationId={getActiveLocationId()}
       />
 
       {/* --- HUD (Top Bar) --- */}
+      {/* Only show stats during gameplay phases */}
       {(phase === 'playing' || phase === 'result' || phase === 'challenge') && (
         <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none">
           {/* Top Gradient Overlay */}
@@ -289,18 +360,25 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {/* History Mode Top Badge */}
+      {phase === 'history' && (
+        <div className="absolute top-4 left-4 z-30 bg-imperial-ocean text-white px-4 py-2 rounded-full shadow-lg border border-white/20 font-serif font-bold flex items-center gap-2">
+           <BookOpen size={18} /> 史實模式：探索鄭和七下西洋足跡
+        </div>
+      )}
+
       {/* --- Main UI Layer --- */}
       
       {/* 1. Location Info Panel - Top Right */}
-      {phase === 'playing' && currentEvent && (
+      {(phase === 'playing' || phase === 'history') && getActiveLocationId() && (
           <div className="absolute top-28 right-4 z-20 pointer-events-none flex flex-col items-end gap-2">
               <div className="pointer-events-auto">
-                   <InfoPanel location={LOCATIONS.find(l => l.id === currentEvent.locationId) || null} />
+                   <InfoPanel location={LOCATIONS.find(l => l.id === getActiveLocationId()) || null} />
               </div>
           </div>
       )}
 
-      {/* 2. Event Card - Bottom Left */}
+      {/* 2. Event Card - Bottom Left (Gameplay Version) */}
       {phase === 'playing' && currentEvent && (
         <div className={`absolute left-0 bottom-0 md:left-8 md:bottom-8 z-20 flex flex-col items-start p-2 md:p-0 pointer-events-none transition-all duration-500 ${isUiMinimized ? 'translate-y-[85%]' : 'translate-y-0'}`}>
             <PaperCard className="pointer-events-auto max-w-md w-full">
@@ -370,8 +448,64 @@ const App: React.FC = () => {
         </div>
       )}
 
+      {/* 3. History Control Card - Bottom Left (History Version) */}
+      {phase === 'history' && currentHistoryEvent && (
+        <div className="absolute left-0 bottom-0 md:left-8 md:bottom-8 z-20 flex flex-col items-start p-2 md:p-0 pointer-events-auto">
+             <PaperCard className="max-w-md w-full">
+                <div className="p-6">
+                    <div className="flex items-center gap-3 mb-4 border-b border-imperial-ink/10 pb-3">
+                        <div>
+                            <div className="text-xs uppercase text-imperial-ocean font-bold tracking-widest mb-1 flex items-center gap-2">
+                                <span className="bg-imperial-ocean text-white px-1 rounded">{currentHistoryEvent.year}</span>
+                                歷史航跡 {currentHistoryIndex + 1} / {HISTORY_MILESTONES.length}
+                            </div>
+                            <h2 className="text-2xl font-serif font-bold text-imperial-ink mt-2">{currentHistoryEvent.title}</h2>
+                        </div>
+                    </div>
+
+                    <p className="text-imperial-ink/80 mb-6 leading-relaxed text-base font-serif border-l-4 border-imperial-ocean pl-3 bg-imperial-ocean/5 py-2 rounded-r">
+                        {currentHistoryEvent.description}
+                    </p>
+
+                    <div className="flex justify-between items-center mt-4">
+                        <button 
+                            onClick={historyPrev}
+                            disabled={currentHistoryIndex === 0}
+                            className="flex items-center gap-1 px-4 py-2 rounded bg-imperial-parchment_dark text-imperial-ink disabled:opacity-30 hover:bg-imperial-gold/20 transition-colors font-bold"
+                        >
+                            <ChevronLeft size={18} /> 上一站
+                        </button>
+
+                        <button 
+                            onClick={() => setPhase('intro')}
+                            className="flex items-center gap-1 px-4 py-2 rounded text-imperial-ink/60 hover:text-imperial-red hover:bg-red-50 transition-colors text-sm"
+                        >
+                            <Home size={16} /> 返回
+                        </button>
+
+                        <button 
+                            onClick={historyNext}
+                            disabled={currentHistoryIndex === HISTORY_MILESTONES.length - 1}
+                            className="flex items-center gap-1 px-4 py-2 rounded bg-imperial-ocean text-white disabled:opacity-30 hover:bg-blue-900 transition-colors font-bold shadow-md"
+                        >
+                            下一站 <ChevronRight size={18} />
+                        </button>
+                    </div>
+                </div>
+             </PaperCard>
+        </div>
+      )}
+
+
       {/* --- Overlays & Modals --- */}
       
+      {/* Registration Screen */}
+      {phase === 'registration' && (
+        <ModalWrapper>
+          <RegistrationPanel onComplete={handleRegistrationComplete} />
+        </ModalWrapper>
+      )}
+
       {/* Intro Screen */}
       {phase === 'intro' && (
         <ModalWrapper>
@@ -382,12 +516,19 @@ const App: React.FC = () => {
             <PaperCard className="p-8 mb-8 text-left space-y-4 leading-relaxed text-lg">
                 <p>永樂三年，大明皇帝朱棣命你出使西洋。此行路途凶險，伴君如伴虎。</p>
                 <p>你將經歷<strong className="text-imperial-red">十個航段</strong>。請注意：皇帝的耐心是有限的，任何有損國威或延誤行程的決定，都可能導致信任崩塌。</p>
-                <p>啟航前，需通過<strong className="text-imperial-gold bg-imperial-ink text-white px-2 py-0.5 rounded">歷史知識測試</strong>決定初始能力！</p>
+                <p className="text-sm text-imperial-ink/60 mt-4 border-t border-imperial-ink/10 pt-2">
+                    您可以選擇進入「啟航挑戰」來管理艦隊資源與決策，或選擇「史實漫遊」純粹探索鄭和的歷史足跡。
+                </p>
             </PaperCard>
 
-            <button onClick={startQuiz} className="bg-imperial-gold text-imperial-ink font-bold py-3 px-10 rounded-full text-xl hover:bg-yellow-500 transition-all hover:scale-105 shadow-xl border-2 border-imperial-parchment">
-                開始測試
-            </button>
+            <div className="flex flex-col md:flex-row gap-4 justify-center w-full">
+                <button onClick={startQuiz} className="bg-imperial-gold text-imperial-ink font-bold py-3 px-8 rounded-full text-xl hover:bg-yellow-500 transition-all hover:scale-105 shadow-xl border-2 border-imperial-parchment flex items-center justify-center gap-2">
+                    <Anchor size={24} /> 啟航挑戰
+                </button>
+                <button onClick={startHistoryMode} className="bg-imperial-ocean text-white font-bold py-3 px-8 rounded-full text-xl hover:bg-blue-900 transition-all hover:scale-105 shadow-xl border-2 border-imperial-parchment flex items-center justify-center gap-2">
+                    <BookOpen size={24} /> 史實漫遊
+                </button>
+            </div>
           </div>
         </ModalWrapper>
       )}
@@ -404,22 +545,30 @@ const App: React.FC = () => {
             <p className="text-xl mb-8 font-serif font-bold">{quizQuestions[currentQuizIndex]?.question}</p>
             
             <div className="space-y-3">
-                {quizQuestions[currentQuizIndex]?.options.map((opt, i) => (
-                    <button 
-                        key={i}
-                        onClick={() => !quizFeedback && handleQuizAnswer(i)}
-                        disabled={!!quizFeedback}
-                        className={`w-full p-4 rounded-lg text-left border-2 transition-all font-serif text-lg ${
-                            quizFeedback 
-                                ? i === quizQuestions[currentQuizIndex].correct 
-                                    ? 'bg-green-100 border-green-500 text-green-900' 
-                                    : 'bg-gray-100 border-gray-300 opacity-50'
-                                : 'bg-white border-imperial-ink/10 hover:border-imperial-gold hover:bg-imperial-gold/5'
-                        }`}
-                    >
-                        {opt}
-                    </button>
-                ))}
+                {quizQuestions[currentQuizIndex]?.options.map((opt, i) => {
+                    let btnClass = 'bg-white border-imperial-ink/10 hover:border-imperial-gold hover:bg-imperial-gold/5';
+                    if (quizFeedback) {
+                        if (i === quizQuestions[currentQuizIndex].correct) {
+                            btnClass = 'bg-green-100 border-green-500 text-green-900';
+                        } else if (i === quizFeedback.selectedId) {
+                             // Correctly highlight the WRONG selection in red
+                            btnClass = 'bg-red-100 border-red-500 text-red-900';
+                        } else {
+                            btnClass = 'bg-gray-100 border-gray-300 opacity-50';
+                        }
+                    }
+
+                    return (
+                        <button 
+                            key={i}
+                            onClick={() => !quizFeedback && handleQuizAnswer(i)}
+                            disabled={!!quizFeedback}
+                            className={`w-full p-4 rounded-lg text-left border-2 transition-all font-serif text-lg ${btnClass}`}
+                        >
+                            {opt}
+                        </button>
+                    );
+                })}
             </div>
 
             {quizFeedback && (
@@ -446,21 +595,28 @@ const App: React.FC = () => {
                 <p className="text-lg font-serif mb-6 text-left font-bold">{activeChallengeQuestion.question}</p>
                 
                 <div className="space-y-3">
-                    {activeChallengeQuestion.options.map((opt, i) => (
-                        <button
-                            key={i}
-                            onClick={() => !quizFeedback && handleChallengeAnswer(i)}
-                            className={`w-full p-3 rounded border-2 text-left font-serif ${
-                                quizFeedback 
-                                ? i === activeChallengeQuestion.correct 
-                                    ? 'bg-green-100 border-green-500 text-green-900' 
-                                    : 'bg-gray-100 border-gray-300 opacity-50'
-                                : 'bg-white border-imperial-ink/20 hover:border-imperial-gold'
-                            }`}
-                        >
-                            {opt}
-                        </button>
-                    ))}
+                    {activeChallengeQuestion.options.map((opt, i) => {
+                        let btnClass = 'bg-white border-imperial-ink/20 hover:border-imperial-gold';
+                        if (quizFeedback) {
+                            if (i === activeChallengeQuestion.correct) {
+                                btnClass = 'bg-green-100 border-green-500 text-green-900';
+                            } else if (i === quizFeedback.selectedId) {
+                                btnClass = 'bg-red-100 border-red-500 text-red-900';
+                            } else {
+                                btnClass = 'bg-gray-100 border-gray-300 opacity-50';
+                            }
+                        }
+
+                        return (
+                            <button
+                                key={i}
+                                onClick={() => !quizFeedback && handleChallengeAnswer(i)}
+                                className={`w-full p-3 rounded border-2 text-left font-serif ${btnClass}`}
+                            >
+                                {opt}
+                            </button>
+                        );
+                    })}
                 </div>
                 {quizFeedback && (
                     <div className="mt-4 text-sm text-imperial-ink/80 animate-fadeIn bg-imperial-gold/10 p-2 rounded">
@@ -496,6 +652,16 @@ const App: React.FC = () => {
         </ModalWrapper>
       )}
 
+      {/* Assessment Phase */}
+      {phase === 'assessment' && (
+        <ModalWrapper>
+          <AssessmentPanel 
+            studentProfiles={studentProfiles} 
+            onRestart={() => window.location.reload()} 
+          />
+        </ModalWrapper>
+      )}
+
       {/* Victory / Game Over */}
       {(phase === 'victory' || phase === 'gameover') && (
         <ModalWrapper>
@@ -527,9 +693,15 @@ const App: React.FC = () => {
                     </>
                 )}
                 
-                <button onClick={() => window.location.reload()} className="bg-imperial-gold text-imperial-ink font-bold py-3 px-8 rounded-full hover:bg-yellow-500 transition-transform hover:scale-105 shadow-xl">
-                    重新挑戰
-                </button>
+                <div className="flex gap-4 justify-center">
+                    <button onClick={() => setPhase('assessment')} className="bg-imperial-ocean text-white font-bold py-3 px-8 rounded-full hover:bg-blue-900 transition-transform hover:scale-105 shadow-xl flex items-center gap-2">
+                        <GraduationCap size={20} /> 前往總結與反思
+                    </button>
+                    {/* Fallback reload if user wants to skip assessment and just replay */}
+                    <button onClick={() => window.location.reload()} className="bg-imperial-gold text-imperial-ink font-bold py-3 px-8 rounded-full hover:bg-yellow-500 transition-transform hover:scale-105 shadow-xl">
+                        重新挑戰
+                    </button>
+                </div>
              </PaperCard>
         </ModalWrapper>
       )}

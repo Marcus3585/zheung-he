@@ -75,9 +75,34 @@ export interface GameEvent {
   choices: GameChoice[];
 }
 
+export interface HistoryMilestone {
+  year: string;
+  title: string;
+  locationId: string;
+  description: string;
+}
+
 export interface QuizQuestion {
   question: string;
   options: string[];
   correct: number;
   explanation: string;
+}
+
+export interface AssessmentResult {
+  score1: number;
+  score2: number;
+  feedback1: string;
+  feedback2: string;
+  totalComment: string;
+}
+
+export interface StudentProfile {
+  id: string;
+  className: string;
+  classNumber: string;
+  studentId: string;
+  studentName: string;
+  uploadStatus?: 'idle' | 'uploading' | 'success' | 'error';
+  uploadMessage?: string;
 }
