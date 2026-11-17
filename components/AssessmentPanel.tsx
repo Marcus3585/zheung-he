@@ -179,21 +179,28 @@ const AssessmentPanel: React.FC<AssessmentPanelProps> = ({ onRestart, studentPro
 
   const handleSubmit = async () => {
     setStep(2);
-    const grade = await gradeStudentReflection(summary, reflection);
-    setResult(grade);
+    try {
+      const grade = await gradeStudentReflection(summary, reflection);
+      setResult(grade);
+      setStep(3);
 
-    if (grade.totalComment === 'ERROR_CONNECTION') {
-        setStep(3);
-        return;
+      if (grade.totalComment === 'ERROR_CONNECTION') return;
+
+      const totalScore = grade.score1 + grade.score2;
+      studentsStatus.forEach(s => {
+          executeUpload(s, totalScore);
+      });
+    } catch (error) {
+      console.error(error);
+      setResult({
+        score1: 0,
+        score2: 0,
+        feedback1: '評分這一頁沒有寫完。',
+        feedback2: '你可以再交一次。',
+        totalComment: 'ERROR_CONNECTION',
+      });
+      setStep(3);
     }
-
-    setStep(3);
-    
-    // Auto Upload for all students upon successful grading
-    const totalScore = grade.score1 + grade.score2;
-    studentsStatus.forEach(s => {
-        executeUpload(s, totalScore);
-    });
   };
 
   const handleUploadSingleScore = (student: StudentProfile) => {
@@ -346,8 +353,8 @@ const AssessmentPanel: React.FC<AssessmentPanelProps> = ({ onRestart, studentPro
   const currentText = isQ1 ? summary : reflection;
   const setFunc = isQ1 ? setSummary : setReflection;
   const question = isQ1 
-    ? "請總結你這次航行中遇到的最大挑戰，以及你的決策如何影響了結果？" 
-    : "你較贊同以上哪一方的觀點（鄭和下西洋是否得不償失）？為甚麼？";
+    ? "這一趟裡，哪一段最讓你為難？你當時怎樣選，後來又怎樣？" 
+    : "你站在哪一邊：下西洋值得，還是不值得？用一件你記得的事告訴我為甚麼。";
 
   return (
     <PaperCard className="max-w-2xl w-full p-8 animate-fadeIn">

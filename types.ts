@@ -5,7 +5,11 @@ export interface Location {
   lat: number;
   lng: number;
   description: string;
+  /** Local historical note. Shown at once; never fetched from a network. */
+  blurb: string;
   tradeGoods: string[];
+  image: string;
+  imageAlt: string;
 }
 
 export interface Route {

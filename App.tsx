@@ -4,7 +4,9 @@ import InfoPanel from './components/InfoPanel';
 import ChatInterface from './components/ChatInterface';
 import AssessmentPanel from './components/AssessmentPanel';
 import RegistrationPanel from './components/RegistrationPanel';
-import { LOCATIONS, ROUTES, GAME_EVENTS, HISTORY_MILESTONES, QUIZ_QUESTIONS } from './constants';
+import ErrorBoundary from './components/ErrorBoundary';
+import HistoricImage from './components/HistoricImage';
+import { ILLUSTRATIONS, LOCATIONS, ROUTES, GAME_EVENTS, HISTORY_MILESTONES, QUIZ_QUESTIONS } from './constants';
 import { GameStats, GameEvent, GameChoice, QuizQuestion, StudentProfile } from './types';
 import { Clock, AlertTriangle, Skull, Minimize2, Maximize2, BookOpen, Anchor, ChevronLeft, ChevronRight, Home, GraduationCap } from 'lucide-react';
 
@@ -69,7 +71,7 @@ const App: React.FC = () => {
         setStats(prev => {
           if (prev.timeRemaining <= 1) {
              setPhase('gameover');
-             setResultMessage({success: false, text: "時間耗盡，艦隊未能按時返航。", changes: []});
+             setResultMessage({success: false, text: "時辰用盡了。船還沒有回到劉家港，這一趟只能記到這裡。", changes: []});
              return prev;
           }
           return { ...prev, timeRemaining: prev.timeRemaining - 1 };
@@ -84,10 +86,10 @@ const App: React.FC = () => {
     if (phase === 'playing') {
       if (stats.trust <= 0) {
         setPhase('gameover');
-        setResultMessage({success: false, text: "皇帝震怒，下令召回艦隊，將你革職查辦。", changes: []});
+        setResultMessage({success: false, text: "皇上來信召回艦隊。信任用完了，船要掉頭。", changes: []});
       } else if (stats.morale <= 0) {
         setPhase('gameover');
-        setResultMessage({success: false, text: "水手譁變，艦隊分崩離析。", changes: []});
+        setResultMessage({success: false, text: "水手不肯再聽令。船散了，這一趟走不下去。", changes: []});
       }
     }
   }, [stats, phase]);
@@ -189,8 +191,14 @@ const App: React.FC = () => {
     setCurrentEvent(GAME_EVENTS[idx]);
   };
 
+  const requirementMet = (choice: GameChoice) => {
+    if (!choice.requirement) return true;
+    return stats[choice.requirement.stat] >= choice.requirement.value;
+  };
+
   const handleChoice = (choice: GameChoice) => {
-    if (choice.cost && stats.silver < choice.cost.silver) return; // Should be disabled in UI
+    if (choice.cost && stats.silver < choice.cost.silver) return;
+    if (!requirementMet(choice)) return;
 
     if (choice.cost) {
       setStats(s => ({...s, silver: s.silver - choice.cost!.silver}));
@@ -244,15 +252,26 @@ const App: React.FC = () => {
   };
 
   const applyEffects = (effects: any, text: string, success: boolean, isQilin: boolean = false) => {
+    // Build the badge list once, outside the state updater. React Strict Mode
+    // invokes updaters twice in development; pushing inside setStats duplicated
+    // 「信任 -10」 / 「士氣 +5」. The stat write itself already used `prev`, so
+    // the HUD only moved once. Production does not double-invoke updaters.
     const changes: string[] = [];
+    if (effects.trust) changes.push(`信任 ${effects.trust > 0 ? '+' : ''}${effects.trust}`);
+    if (effects.morale) changes.push(`士氣 ${effects.morale > 0 ? '+' : ''}${effects.morale}`);
+    if (effects.knowledge) changes.push(`學識 +${effects.knowledge}`);
+    if (effects.connections) changes.push(`人脈 +${effects.connections}`);
+    if (effects.silver) changes.push(`銀兩 ${effects.silver > 0 ? '+' : ''}${effects.silver}`);
+    if (success && isQilin) changes.push('獲得麒麟！');
+
     setStats(prev => {
       const next = { ...prev };
-      if (effects.trust) { next.trust = Math.min(100, Math.max(0, next.trust + effects.trust)); changes.push(`信任 ${effects.trust > 0 ? '+' : ''}${effects.trust}`); }
-      if (effects.morale) { next.morale = Math.min(100, Math.max(0, next.morale + effects.morale)); changes.push(`士氣 ${effects.morale > 0 ? '+' : ''}${effects.morale}`); }
-      if (effects.knowledge) { next.knowledge += effects.knowledge; changes.push(`學識 +${effects.knowledge}`); }
-      if (effects.connections) { next.connections += effects.connections; changes.push(`人脈 +${effects.connections}`); }
-      if (effects.silver) { next.silver += effects.silver; changes.push(`銀兩 ${effects.silver > 0 ? '+' : ''}${effects.silver}`); }
-      if (success && isQilin) { next.hasQilin = true; changes.push("獲得麒麟！"); }
+      if (effects.trust) next.trust = Math.min(100, Math.max(0, next.trust + effects.trust));
+      if (effects.morale) next.morale = Math.min(100, Math.max(0, next.morale + effects.morale));
+      if (effects.knowledge) next.knowledge += effects.knowledge;
+      if (effects.connections) next.connections += effects.connections;
+      if (effects.silver) next.silver += effects.silver;
+      if (success && isQilin) next.hasQilin = true;
       return next;
     });
 
@@ -302,11 +321,13 @@ const App: React.FC = () => {
   return (
     <div className="relative w-full h-screen overflow-hidden font-sans">
       {/* 3D Background */}
-      <GlobeViz 
-        locations={LOCATIONS} 
-        routes={ROUTES} 
-        activeLocationId={getActiveLocationId()}
-      />
+      <ErrorBoundary inline>
+        <GlobeViz 
+          locations={LOCATIONS} 
+          routes={ROUTES} 
+          activeLocationId={getActiveLocationId()}
+        />
+      </ErrorBoundary>
 
       {/* --- HUD (Top Bar) --- */}
       {/* Only show stats during gameplay phases */}
@@ -363,7 +384,7 @@ const App: React.FC = () => {
       {/* History Mode Top Badge */}
       {phase === 'history' && (
         <div className="absolute top-4 left-4 z-30 bg-imperial-ocean text-white px-4 py-2 rounded-full shadow-lg border border-white/20 font-serif font-bold flex items-center gap-2">
-           <BookOpen size={18} /> 史實模式：探索鄭和七下西洋足跡
+           <BookOpen size={18} /> 史實漫遊：跟着鄭和的船跡走
         </div>
       )}
 
@@ -386,11 +407,16 @@ const App: React.FC = () => {
                     {/* Minimize Toggle */}
                     <button 
                         onClick={() => setIsUiMinimized(!isUiMinimized)}
-                        className="absolute top-2 right-2 text-imperial-ink/40 hover:text-imperial-ink p-1 hover:bg-imperial-ink/5 rounded"
+                        className="absolute top-2 right-2 z-10 bg-imperial-parchment/90 text-imperial-ink/60 hover:text-imperial-ink p-1 hover:bg-imperial-parchment rounded"
                     >
                         {isUiMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
                     </button>
 
+                    <HistoricImage
+                        src={LOCATIONS.find(l => l.id === currentEvent.locationId)?.image}
+                        alt={LOCATIONS.find(l => l.id === currentEvent.locationId)?.imageAlt || currentEvent.title}
+                        className="w-full h-28 object-cover rounded-lg mb-4 border border-imperial-ink/10"
+                    />
                     <div className="flex items-center gap-3 mb-4 border-b border-imperial-ink/10 pb-3 pr-8">
                         <span className="text-4xl filter drop-shadow-sm">{currentEvent.icon}</span>
                         <div>
@@ -407,31 +433,29 @@ const App: React.FC = () => {
                         <div className="grid gap-3">
                             {currentEvent.choices.map((choice, i) => {
                                 const canAfford = !choice.cost || stats.silver >= choice.cost.silver;
-                                let reqMet = true;
-                                if (choice.requirement) {
-                                    reqMet = stats[choice.requirement.stat] >= choice.requirement.value;
-                                }
+                                const reqMet = requirementMet(choice);
+                                const enabled = canAfford && reqMet;
 
                                 return (
                                     <button 
                                         key={i}
                                         onClick={() => handleChoice(choice)}
-                                        disabled={!canAfford}
+                                        disabled={!enabled}
                                         className={`text-left p-3 rounded-lg border-2 transition-all group relative overflow-hidden ${
-                                            canAfford 
+                                            enabled 
                                             ? 'bg-white border-imperial-ink/10 hover:border-imperial-gold hover:shadow-md' 
                                             : 'bg-gray-200 border-gray-300 opacity-60 cursor-not-allowed'
                                         }`}
                                     >
                                         <div className="flex justify-between items-center relative z-10">
-                                            <span className={`font-bold text-base font-serif ${canAfford ? 'group-hover:text-imperial-red' : ''} transition-colors`}>{choice.title}</span>
+                                            <span className={`font-bold text-base font-serif ${enabled ? 'group-hover:text-imperial-red' : ''} transition-colors`}>{choice.title}</span>
                                             <div className="text-xs flex flex-col items-end gap-0.5 font-sans">
                                                 {choice.requirementText && (
-                                                    <span className={`${reqMet ? 'text-game-morale' : 'text-imperial-red font-bold'}`}>
+                                                    <span className={`${!reqMet || (choice.cost && !canAfford) ? 'text-imperial-red font-bold' : 'text-game-morale'}`}>
                                                         {choice.requirementText}
                                                     </span>
                                                 )}
-                                                {choice.cost && (
+                                                {choice.cost && !choice.requirementText?.includes('銀') && (
                                                     <span className={`${canAfford ? 'text-imperial-gold' : 'text-imperial-red font-bold'}`}>
                                                         耗銀 {choice.cost.silver}
                                                     </span>
@@ -453,6 +477,11 @@ const App: React.FC = () => {
         <div className="absolute left-0 bottom-0 md:left-8 md:bottom-8 z-20 flex flex-col items-start p-2 md:p-0 pointer-events-auto">
              <PaperCard className="max-w-md w-full">
                 <div className="p-6">
+                    <HistoricImage
+                        src={LOCATIONS.find(l => l.id === currentHistoryEvent.locationId)?.image}
+                        alt={LOCATIONS.find(l => l.id === currentHistoryEvent.locationId)?.imageAlt || currentHistoryEvent.title}
+                        className="w-full h-32 object-cover rounded-lg mb-4 border border-imperial-ink/10"
+                    />
                     <div className="flex items-center gap-3 mb-4 border-b border-imperial-ink/10 pb-3">
                         <div>
                             <div className="text-xs uppercase text-imperial-ocean font-bold tracking-widest mb-1 flex items-center gap-2">
@@ -511,13 +540,18 @@ const App: React.FC = () => {
         <ModalWrapper>
           <div className="max-w-2xl w-full text-center">
             <h1 className="text-6xl md:text-8xl font-serif text-imperial-gold mb-2 drop-shadow-lg" style={{textShadow: '0 4px 10px rgba(0,0,0,0.5)'}}>大明遠航</h1>
-            <h2 className="text-3xl text-imperial-parchment mb-8 font-serif tracking-widest text-shadow-sm">麒麟之誓</h2>
+            <h2 className="text-3xl text-imperial-parchment mb-6 font-serif tracking-widest text-shadow-sm">麒麟之誓</h2>
+            <HistoricImage
+              src={ILLUSTRATIONS.ship.src}
+              alt={ILLUSTRATIONS.ship.alt}
+              className="mx-auto mb-6 w-full max-w-2xl h-40 md:h-52 object-cover rounded-xl border-2 border-imperial-parchment/40 shadow-2xl"
+            />
             
             <PaperCard className="p-8 mb-8 text-left space-y-4 leading-relaxed text-lg">
-                <p>永樂三年，大明皇帝朱棣命你出使西洋。此行路途凶險，伴君如伴虎。</p>
-                <p>你將經歷<strong className="text-imperial-red">十個航段</strong>。請注意：皇帝的耐心是有限的，任何有損國威或延誤行程的決定，都可能導致信任崩塌。</p>
+                <p>永樂三年（1405年），明成祖遣正使太監鄭和統領舟師，展開首次下西洋遠航。船隊載着絲綢、瓷器與詔書揚帆出海，奉命通使西洋諸國，宣示朝廷德威並頒行賞賜，在季候風吹拂的浩瀚航道上，開啟明初官方海外交往的序幕。</p>
+                <p>遊戲裡你會走<strong className="text-imperial-red">十一個航段</strong>。頭一程是在劉家港集結，再沿岸南下候風，不是盛夏直渡南海。麒麟是後來的事。皇上的耐心有限，水手的水桶也有限。</p>
                 <p className="text-sm text-imperial-ink/60 mt-4 border-t border-imperial-ink/10 pt-2">
-                    您可以選擇進入「啟航挑戰」來管理艦隊資源與決策，或選擇「史實漫遊」純粹探索鄭和的歷史足跡。
+                    想自己掌舵，就按「啟航挑戰」。想先沿着鄭和的腳印走一遍，就按「史實漫遊」。你不用做完美的人，船還在，路就還沒斷。
                 </p>
             </PaperCard>
 
@@ -537,10 +571,16 @@ const App: React.FC = () => {
       {phase === 'quiz' && (
         <ModalWrapper>
           <PaperCard className="max-w-xl w-full p-8">
-            <div className="flex justify-between items-center mb-6 border-b border-imperial-ink/10 pb-4">
+            <HistoricImage
+              src={ILLUSTRATIONS.quiz.src}
+              alt={ILLUSTRATIONS.quiz.alt}
+              className="w-full h-28 object-cover rounded-lg mb-4 border border-imperial-ink/10"
+            />
+            <div className="flex justify-between items-center mb-2 border-b border-imperial-ink/10 pb-4">
                 <h3 className="text-imperial-red text-2xl font-bold">航海知識測試</h3>
                 <span className="text-imperial-ink/50 font-bold">第 {currentQuizIndex + 1} / 5 題</span>
             </div>
+            <p className="text-sm text-imperial-ink/60 mb-4">出發前對一對舊事。答錯也不要緊，我講給你聽。</p>
             
             <p className="text-xl mb-8 font-serif font-bold">{quizQuestions[currentQuizIndex]?.question}</p>
             
@@ -678,10 +718,10 @@ const App: React.FC = () => {
                              <p className="text-lg">麒麟祥瑞: {stats.hasQilin ? '🦒 已帶回' : '❌ 未獲得'}</p>
                              <hr className="border-imperial-ink/20 my-4"/>
                              <p className="italic text-imperial-ink/70">
-                                {getFinalGrade() === 'S' && "最高榮耀！你帶回了麒麟，象徵國力強盛。鄭和下西洋不僅是航海壯舉，更是和平外交的典範。"}
-                                {getFinalGrade() === 'A' && "光榮歸航。雖無麒麟，但外交成果豐碩，展現了和平崛起的理念。"}
-                                {getFinalGrade() === 'B' && "平安歸來。航行雖有波折，但最終平安。海洋政策的興衰值得深思。"}
-                                {getFinalGrade() === 'C' && "勉強及格。損失不小，決策需更周全。"}
+                                {getFinalGrade() === 'S' && "麒麟真的跟船回來了。人還齊，皇上也還肯笑。這趟走得完整。"}
+                                {getFinalGrade() === 'A' && "船回來了，朋友也結下了幾個。沒有麒麟不要緊，海路是通的。"}
+                                {getFinalGrade() === 'B' && "有風浪，有耽誤，人總算都在甲板上。能這樣回來，已經不容易。"}
+                                {getFinalGrade() === 'C' && "船是靠岸了，行李卻輕。下一趟，記得在開口之前先看清水桶和星圖。"}
                              </p>
                         </div>
                     </>

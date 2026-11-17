@@ -1,0 +1,4 @@
+這個資料夾給日後的船模和對照檔用。
+
+- ming-treasure-ship-viewer.html：學校 Gemini 4 Carbon（Enterprise）Canvas 做出的獨立檢視器，只供對照。遊戲裡的船是場景中的網格，不會用 iframe 打開這一頁。
+- 若另有 .glb，可放在這裡，檔名建議 treasure-ship.glb，再在 components/GlobeViz.tsx 把 SHIP_MODEL_URL 設成 /models/treasure-ship.glb。沒有這個檔時，仍用內建的程序性寶船。

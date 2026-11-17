@@ -1,104 +1,65 @@
-import React, { useEffect, useRef, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Globe, { GlobeMethods } from 'react-globe.gl';
 import * as THREE from 'three';
-// @ts-ignore
-import { GLTFLoader } from 'https://esm.sh/three@0.170.0/examples/jsm/loaders/GLTFLoader?external=three';
 import { Location, Route } from '../types';
+import { createTreasureShip, fitLoadedShip } from './treasureShip';
 
 interface GlobeVizProps {
   locations: Location[];
   routes: Route[];
-  activeLocationId?: string; // Focus on this location if provided
+  activeLocationId?: string;
 }
 
-// --- CONFIGURATION ---
-// 替換此處的 URL 為您的 .glb 或 .gltf 模型網址
-// Replace this URL with your own .glb/.gltf model URL
-const SHIP_MODEL_URL = ''; 
-const SHIP_SCALE = 3; // 根據您的模型大小調整縮放 Adjust scale based on your model
+/**
+ * Leave empty to use the built-in procedural 寶船.
+ * A later GLB can be dropped in public/models/ and referenced here, e.g.
+ * '/models/treasure-ship.glb'. The loader is imported from the `three` package
+ * only when this string is set.
+ */
+const SHIP_MODEL_URL = '';
 
-// Helper to create the fallback 3D ship mesh (Procedural)
-const createFallbackShipMesh = () => {
-  const shipGroup = new THREE.Group();
-  
-  // Materials
-  const woodDark = new THREE.MeshLambertMaterial({ color: 0x3E2723 });
-  const woodLight = new THREE.MeshLambertMaterial({ color: 0x5D4037 });
-  const sailRed = new THREE.MeshLambertMaterial({ color: 0x8B1E1E, side: THREE.DoubleSide });
-
-  // Hull
-  const hullGeo = new THREE.BoxGeometry(1.2, 0.6, 3);
-  const hull = new THREE.Mesh(hullGeo, woodLight);
-  hull.position.y = 0.3;
-  shipGroup.add(hull);
-
-  // Deck cabin (Stern)
-  const cabinGeo = new THREE.BoxGeometry(1.0, 0.6, 0.8);
-  const cabin = new THREE.Mesh(cabinGeo, woodDark);
-  cabin.position.set(0, 0.8, -0.9);
-  shipGroup.add(cabin);
-
-  // Masts
-  const mastGeo = new THREE.CylinderGeometry(0.08, 0.08, 4, 8);
-  
-  const mainMast = new THREE.Mesh(mastGeo, woodDark);
-  mainMast.position.set(0, 2, 0);
-  shipGroup.add(mainMast);
-
-  const foreMast = new THREE.Mesh(mastGeo, woodDark);
-  foreMast.scale.set(0.8, 0.8, 0.8);
-  foreMast.position.set(0, 1.6, 1.0);
-  shipGroup.add(foreMast);
-
-  const aftMast = new THREE.Mesh(mastGeo, woodDark);
-  aftMast.scale.set(0.7, 0.7, 0.7);
-  aftMast.position.set(0, 1.4, -0.8);
-  shipGroup.add(aftMast);
-
-  // Sails (Rectangular, typical of junk ships)
-  const sailGeo = new THREE.BoxGeometry(2, 2.5, 0.05);
-  
-  const mainSail = new THREE.Mesh(sailGeo, sailRed);
-  mainSail.position.set(0, 2.2, 0.15);
-  shipGroup.add(mainSail);
-
-  const foreSail = new THREE.Mesh(sailGeo, sailRed);
-  foreSail.scale.set(0.7, 0.7, 1);
-  foreSail.position.set(0, 1.8, 1.15);
-  shipGroup.add(foreSail);
-
-  // Scale fitting for globe
-  shipGroup.scale.set(3, 3, 3);
-  
-  return shipGroup;
-};
+const EARTH_DAY = '/textures/earth-blue-marble.jpg';
+const EARTH_BUMP = '/textures/earth-topology.png';
 
 const GlobeViz: React.FC<GlobeVizProps> = ({ locations, routes, activeLocationId }) => {
   const globeEl = useRef<GlobeMethods | undefined>(undefined);
+  const readyRef = useRef(false);
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [loadedModel, setLoadedModel] = useState<THREE.Group | null>(null);
 
-  // Load 3D Model
   useEffect(() => {
-    if (SHIP_MODEL_URL) {
-      const loader = new GLTFLoader();
-      loader.load(
-        SHIP_MODEL_URL,
-        (gltf: any) => {
-          const scene = gltf.scene;
-          // Normalize scale if needed, though we set it in objectThreeObject
-          console.log("3D Model Loaded Successfully");
-          setLoadedModel(scene);
-        },
-        undefined,
-        (error: any) => {
-          console.error("Error loading 3D model:", error);
-        }
-      );
-    }
+    if (!SHIP_MODEL_URL) return;
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+        const loader = new GLTFLoader();
+        loader.load(
+          SHIP_MODEL_URL,
+          (gltf) => {
+            if (cancelled) return;
+            try {
+              setLoadedModel(fitLoadedShip(gltf.scene));
+            } catch (error) {
+              console.error('外部船模未能擺正，繼續用內建寶船。', error);
+            }
+          },
+          undefined,
+          (error) => {
+            console.error('外部船模讀取失敗，繼續用內建寶船。', error);
+          },
+        );
+      } catch (error) {
+        console.error('GLTFLoader 未能載入，繼續用內建寶船。', error);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       setDimensions({ width: window.innerWidth, height: window.innerHeight });
@@ -107,50 +68,121 @@ const GlobeViz: React.FC<GlobeVizProps> = ({ locations, routes, activeLocationId
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Update camera when activeLocationId changes
-  useEffect(() => {
-    if (activeLocationId && globeEl.current) {
-        const loc = locations.find(l => l.id === activeLocationId);
-        if (loc) {
-            globeEl.current.pointOfView({ lat: loc.lat, lng: loc.lng, altitude: 2.0 }, 2000);
-        }
+  const focusCamera = useCallback(() => {
+    const globe = globeEl.current;
+    if (!globe || !readyRef.current) return;
+
+    try {
+      const controls = globe.controls?.();
+      if (controls) controls.autoRotate = false;
+    } catch (error) {
+      console.warn('羅盤控制暫時碰不到。', error);
+    }
+
+    try {
+      if (activeLocationId) {
+        const loc = locations.find((item) => item.id === activeLocationId);
+        if (!loc || !Number.isFinite(loc.lat) || !Number.isFinite(loc.lng)) return;
+        globe.pointOfView({ lat: loc.lat, lng: loc.lng, altitude: 1.55 }, 1400);
+      } else {
+        globe.pointOfView({ lat: 12, lng: 105, altitude: 2.35 }, 900);
+      }
+    } catch (error) {
+      console.warn('鏡頭沒有挪動。', error);
     }
   }, [activeLocationId, locations]);
 
-  // Initial camera position & Disable Auto Rotation
   useEffect(() => {
-    if (globeEl.current) {
-      if (!activeLocationId) {
-        globeEl.current.pointOfView({ lat: 15, lng: 100, altitude: 2.5 }, 1000);
-      }
-      globeEl.current.controls().autoRotate = false;
-      globeEl.current.controls().autoRotateSpeed = 0.5;
-    }
-  }, []);
+    focusCamera();
+  }, [focusCamera]);
 
-  // Construct arc data
   const arcsData = useMemo(() => {
-    return routes.map(route => {
-      const startLoc = locations.find(l => l.id === route.start);
-      const endLoc = locations.find(l => l.id === route.end);
+    return routes.map((route) => {
+      const startLoc = locations.find((item) => item.id === route.start);
+      const endLoc = locations.find((item) => item.id === route.end);
       if (!startLoc || !endLoc) return null;
-
       return {
         startLat: startLoc.lat,
         startLng: startLoc.lng,
         endLat: endLoc.lat,
         endLng: endLoc.lng,
-        color: ['#C5A059', '#8B1E1E'], // Gold to Red
+        color: ['#C5A059', '#8B1E1E'],
       };
-    }).filter(Boolean);
+    }).filter((arc) => arc !== null);
   }, [routes, locations]);
 
-  // Ship object data: Only exists if there is an active location
   const shipData = useMemo(() => {
-      if (!activeLocationId) return [];
-      const loc = locations.find(l => l.id === activeLocationId);
-      return loc ? [loc] : [];
+    if (!activeLocationId) return [];
+    const loc = locations.find((item) => item.id === activeLocationId);
+    return loc ? [loc] : [];
   }, [activeLocationId, locations]);
+
+  const labelData = useMemo(() => {
+    // Chinese names only. Spreading the whole location also passed `name`
+    // ("Nanjing", "Champa"), which the globe drew under the Chinese label
+    // and then clipped to fragments such as "mpa".
+    return locations.map((loc) => ({
+      id: loc.id,
+      lat: loc.lat,
+      lng: loc.lng,
+      nameCn: loc.nameCn,
+      selected: loc.id === activeLocationId,
+    }));
+  }, [locations, activeLocationId]);
+
+  const shipObject = useCallback(() => {
+    try {
+      if (loadedModel) {
+        const clone = loadedModel.clone(true);
+        return clone;
+      }
+      return createTreasureShip();
+    } catch (error) {
+      console.error(error);
+      const fallback = new THREE.Mesh(
+        new THREE.BoxGeometry(2, 0.4, 6),
+        new THREE.MeshLambertMaterial({ color: 0x3e2723 }),
+      );
+      fallback.position.y = 0.3;
+      return fallback;
+    }
+  }, [loadedModel]);
+
+  const htmlElement = useCallback((d: object) => {
+    const loc = d as Partial<Location> & { selected?: boolean };
+    const wrap = document.createElement('div');
+    wrap.style.display = 'flex';
+    wrap.style.flexDirection = 'column';
+    wrap.style.alignItems = 'center';
+    wrap.style.transform = 'translate(-50%, -100%)';
+    wrap.style.pointerEvents = 'none';
+
+    const name = document.createElement('div');
+    name.textContent = loc.nameCn ?? '';
+    name.style.fontFamily = '"Noto Serif TC", "Songti TC", serif';
+    name.style.color = loc.selected ? '#FFD700' : '#F0E6D2';
+    name.style.fontWeight = '700';
+    name.style.fontSize = loc.selected ? '18px' : '14px';
+    name.style.textShadow = '0 2px 4px #000';
+    name.style.whiteSpace = 'nowrap';
+    name.style.overflow = 'visible';
+    name.style.maxWidth = 'none';
+    name.style.lineHeight = '1.2';
+    name.style.marginBottom = '4px';
+
+    const dot = document.createElement('div');
+    const dotSize = loc.selected ? '12px' : '8px';
+    dot.style.width = dotSize;
+    dot.style.height = dotSize;
+    dot.style.borderRadius = '50%';
+    dot.style.background = loc.selected ? '#FF4444' : '#C5A059';
+    dot.style.border = '2px solid white';
+    dot.style.boxShadow = loc.selected ? '0 0 10px #FF4444' : '0 0 6px #000';
+
+    wrap.appendChild(name);
+    wrap.appendChild(dot);
+    return wrap;
+  }, []);
 
   return (
     <div className="absolute inset-0 z-0 cursor-move">
@@ -158,71 +190,34 @@ const GlobeViz: React.FC<GlobeVizProps> = ({ locations, routes, activeLocationId
         ref={globeEl}
         width={dimensions.width}
         height={dimensions.height}
-        backgroundColor="rgba(0,0,0,0)" // Transparent to let body gradient show
-        globeImageUrl="//unpkg.com/three-globe/example/img/earth-blue-marble.jpg" // Brighter, bluer earth
-        bumpImageUrl="//unpkg.com/three-globe/example/img/earth-topology.png"
-        
-        // 3D Objects (The Ship)
+        backgroundColor="rgba(0,0,0,0)"
+        globeImageUrl={EARTH_DAY}
+        bumpImageUrl={EARTH_BUMP}
+        rendererConfig={{ antialias: true, alpha: true, failIfMajorPerformanceCaveat: false }}
+        onGlobeReady={() => {
+          readyRef.current = true;
+          focusCamera();
+        }}
         objectsData={shipData}
         objectLat="lat"
         objectLng="lng"
-        objectAltitude={0.01} // Slightly above surface
-        objectThreeObject={() => {
-            if (loadedModel) {
-                const clone = loadedModel.clone();
-                clone.scale.set(SHIP_SCALE, SHIP_SCALE, SHIP_SCALE);
-                // Optional: Adjust rotation if your model is facing the wrong way
-                // clone.rotation.y = Math.PI; 
-                return clone;
-            }
-            return createFallbackShipMesh();
-        }}
-        
-        // Use HTML Elements for Labels to support Chinese characters properly
-        htmlElementsData={locations}
-        htmlElement={(d: any) => {
-          const el = document.createElement('div');
-          const isSelected = d.id === activeLocationId;
-          el.innerHTML = `
-            <div style="
-              display: flex; 
-              flex-direction: column; 
-              align-items: center; 
-              transform: translate(-50%, -50%);
-              cursor: pointer;
-            ">
-              <div style="
-                font-family: 'Noto Serif TC', serif; 
-                color: ${isSelected ? '#FFD700' : '#F0E6D2'}; 
-                font-weight: bold; 
-                font-size: ${isSelected ? '18px' : '14px'};
-                text-shadow: 2px 2px 4px #000;
-                white-space: nowrap;
-                margin-bottom: 4px;
-              ">${d.nameCn}</div>
-              <div style="
-                width: ${isSelected ? '12px' : '8px'}; 
-                height: ${isSelected ? '12px' : '8px'}; 
-                background: ${isSelected ? '#FF4444' : '#C5A059'}; 
-                border-radius: 50%; 
-                border: 2px solid white;
-                box-shadow: 0 0 10px ${isSelected ? '#FF4444' : 'black'};
-              "></div>
-            </div>
-          `;
-          return el;
-        }}
-        
-        // Routes Animation
-        arcsData={arcsData || []}
+        objectAltitude={0.02}
+        objectFacesSurface={true}
+        objectThreeObject={shipObject}
+        labelsData={[]}
+        pointsData={[]}
+        htmlElementsData={labelData}
+        htmlLat="lat"
+        htmlLng="lng"
+        htmlAltitude={0.02}
+        htmlElement={htmlElement}
+        arcsData={arcsData}
         arcColor="color"
-        arcDashLength={0.5} // Length of the dashed line segments
-        arcDashGap={0.2}    // Gap between dashed segments
-        arcDashAnimateTime={1500} // Time to cycle the animation (ms)
-        arcStroke={1.5}     // Thickness of the arc
-        arcAltitude={0.2}   // Height of the arc
-        
-        // Atmosphere
+        arcDashLength={0.5}
+        arcDashGap={0.2}
+        arcDashAnimateTime={1500}
+        arcStroke={1.2}
+        arcAltitude={0.18}
         atmosphereColor="#3a7bd5"
         atmosphereAltitude={0.15}
       />

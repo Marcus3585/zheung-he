@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Users, Plus, Trash2, Anchor, AlertCircle } from 'lucide-react';
 import { StudentProfile } from '../types';
+import { ILLUSTRATIONS } from '../constants';
+import HistoricImage from './HistoricImage';
 
 interface RegistrationPanelProps {
   onComplete: (profiles: StudentProfile[]) => void;
@@ -67,9 +69,14 @@ const RegistrationPanel: React.FC<RegistrationPanelProps> = ({ onComplete }) => 
 
   return (
     <PaperCard className="max-w-4xl w-full p-8 animate-fadeIn">
+      <HistoricImage
+        src={ILLUSTRATIONS.registration.src}
+        alt={ILLUSTRATIONS.registration.alt}
+        className="w-full h-32 object-cover rounded-lg mb-6 border border-imperial-ink/10"
+      />
       <div className="text-center mb-8">
         <h1 className="text-4xl font-bold text-imperial-red mb-2 drop-shadow-sm">船員名錄</h1>
-        <p className="text-imperial-ink/70">請登記登艦人員信息 (1-5人)</p>
+        <p className="text-imperial-ink/70">上船之前，先把名字寫在冊上。一艘船可以登一至五位同學。</p>
       </div>
 
       <div className="space-y-4 mb-8 max-h-[50vh] overflow-y-auto pr-2">
