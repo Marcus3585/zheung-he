@@ -252,15 +252,26 @@ const App: React.FC = () => {
   };
 
   const applyEffects = (effects: any, text: string, success: boolean, isQilin: boolean = false) => {
+    // Build the badge list once, outside the state updater. React Strict Mode
+    // invokes updaters twice in development; pushing inside setStats duplicated
+    // 「信任 -10」 / 「士氣 +5」. The stat write itself already used `prev`, so
+    // the HUD only moved once. Production does not double-invoke updaters.
     const changes: string[] = [];
+    if (effects.trust) changes.push(`信任 ${effects.trust > 0 ? '+' : ''}${effects.trust}`);
+    if (effects.morale) changes.push(`士氣 ${effects.morale > 0 ? '+' : ''}${effects.morale}`);
+    if (effects.knowledge) changes.push(`學識 +${effects.knowledge}`);
+    if (effects.connections) changes.push(`人脈 +${effects.connections}`);
+    if (effects.silver) changes.push(`銀兩 ${effects.silver > 0 ? '+' : ''}${effects.silver}`);
+    if (success && isQilin) changes.push('獲得麒麟！');
+
     setStats(prev => {
       const next = { ...prev };
-      if (effects.trust) { next.trust = Math.min(100, Math.max(0, next.trust + effects.trust)); changes.push(`信任 ${effects.trust > 0 ? '+' : ''}${effects.trust}`); }
-      if (effects.morale) { next.morale = Math.min(100, Math.max(0, next.morale + effects.morale)); changes.push(`士氣 ${effects.morale > 0 ? '+' : ''}${effects.morale}`); }
-      if (effects.knowledge) { next.knowledge += effects.knowledge; changes.push(`學識 +${effects.knowledge}`); }
-      if (effects.connections) { next.connections += effects.connections; changes.push(`人脈 +${effects.connections}`); }
-      if (effects.silver) { next.silver += effects.silver; changes.push(`銀兩 ${effects.silver > 0 ? '+' : ''}${effects.silver}`); }
-      if (success && isQilin) { next.hasQilin = true; changes.push("獲得麒麟！"); }
+      if (effects.trust) next.trust = Math.min(100, Math.max(0, next.trust + effects.trust));
+      if (effects.morale) next.morale = Math.min(100, Math.max(0, next.morale + effects.morale));
+      if (effects.knowledge) next.knowledge += effects.knowledge;
+      if (effects.connections) next.connections += effects.connections;
+      if (effects.silver) next.silver += effects.silver;
+      if (success && isQilin) next.hasQilin = true;
       return next;
     });
 
@@ -440,11 +451,11 @@ const App: React.FC = () => {
                                             <span className={`font-bold text-base font-serif ${enabled ? 'group-hover:text-imperial-red' : ''} transition-colors`}>{choice.title}</span>
                                             <div className="text-xs flex flex-col items-end gap-0.5 font-sans">
                                                 {choice.requirementText && (
-                                                    <span className={`${reqMet ? 'text-game-morale' : 'text-imperial-red font-bold'}`}>
+                                                    <span className={`${!reqMet || (choice.cost && !canAfford) ? 'text-imperial-red font-bold' : 'text-game-morale'}`}>
                                                         {choice.requirementText}
                                                     </span>
                                                 )}
-                                                {choice.cost && (
+                                                {choice.cost && !choice.requirementText?.includes('銀') && (
                                                     <span className={`${canAfford ? 'text-imperial-gold' : 'text-imperial-red font-bold'}`}>
                                                         耗銀 {choice.cost.silver}
                                                     </span>

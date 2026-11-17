@@ -53,26 +53,29 @@ const ChatInterface: React.FC = () => {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-[90vw] md:w-96 h-[400px] flex flex-col bg-imperial-parchment text-imperial-ink rounded-xl border-2 border-imperial-ink/30 shadow-2xl overflow-hidden font-serif">
-      <div className="relative flex items-center justify-between p-4 border-b border-imperial-ink/10 min-h-[4.5rem] overflow-hidden">
+    <div className="fixed bottom-4 right-4 z-50 flex w-[min(94vw,28rem)] h-[min(82vh,40rem)] flex-col bg-imperial-parchment text-imperial-ink rounded-xl border-2 border-imperial-ink/30 shadow-2xl overflow-hidden font-serif">
+      <div className="flex items-center gap-3 p-3 border-b border-imperial-ink/10 bg-imperial-gold/15 shrink-0">
         <HistoricImage
           src={ILLUSTRATIONS.historian.src}
           alt={ILLUSTRATIONS.historian.alt}
-          className="absolute inset-0 w-full h-full object-cover"
+          className="h-28 w-24 shrink-0 rounded-md border border-imperial-ink/20"
+          imgClassName="object-top"
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-imperial-parchment via-imperial-parchment/92 to-imperial-parchment/55" />
-        <h3 className="relative font-bold text-imperial-ink flex items-center gap-2">
-          <span className="text-xl">📜</span> 隨船史官
-        </h3>
-        <button onClick={() => setIsOpen(false)} className="relative text-imperial-ink/50 hover:text-imperial-red transition-colors">
+        <div className="min-w-0 flex-1">
+          <h3 className="font-bold text-imperial-ink flex items-center gap-2 text-lg">
+            <span className="text-xl">📜</span> 隨船史官
+          </h3>
+          <p className="text-xs text-imperial-ink/70 mt-1 leading-relaxed">問港口、季候風或這艘船。舊話還在上面，可以往上翻。</p>
+        </div>
+        <button onClick={() => setIsOpen(false)} className="text-imperial-ink/50 hover:text-imperial-red transition-colors shrink-0" aria-label="關閉史官">
           <X size={18} />
         </button>
       </div>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-imperial-parchment">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 space-y-4 bg-imperial-parchment">
         {messages.map((msg) => (
           <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-[85%] rounded-lg p-3 text-sm shadow-sm ${
+            <div className={`max-w-[85%] rounded-lg p-3 text-sm leading-relaxed shadow-sm break-words ${
               msg.role === 'user' 
                 ? 'bg-imperial-ocean text-white' 
                 : 'bg-white border border-imperial-ink/10 text-imperial-ink'

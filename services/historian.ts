@@ -247,8 +247,58 @@ const OFF_TOPIC = '這件我船上的檔沒有記。我只管鄭和的七次航�
 
 let lastEntryId: string | null = null;
 
-function scoreEntry(entry: Entry, text: string): number {
+interface CorpusEntry extends Entry {
+  blob: string;
+}
+
+const CORPUS: CorpusEntry[] = ENTRIES.map((entry) => ({
+  ...entry,
+  blob: fold([entry.keywords.join(' '), entry.answer, entry.more ?? ''].join('\n')),
+}));
+
+/** Short words that show up in almost every note and should not decide a match. */
+const STOP_GRAMS = new Set([
+  '不是', '這個', '可以', '我們', '他們', '一個', '因為', '所以', '然後', '沒有', '就是',
+  '這裡', '那裡', '甚麼', '一下', '以及', '或者', '如果', '已經', '還是', '不要', '這是',
+  '船隊', '大明', '南京', '朝廷', '海上', '後來', '當時', '今天', '知道',
+]);
+
+function entryCount(gram: string): number {
+  let count = 0;
+  for (const entry of CORPUS) {
+    if (entry.blob.includes(gram)) count += 1;
+  }
+  return count;
+}
+
+/**
+ * Score a question by phrases that already appear in that entry's answer.
+ * 「冬天由五虎門放洋」 reuses wording from the 劉家港 note, so it must hit
+ * that note even though those words were not listed as separate keywords.
+ */
+function overlapScore(blob: string, text: string): number {
   let score = 0;
+  const counted: string[] = [];
+  const runs = text.match(/[\u4e00-\u9fff]+/g) ?? [];
+  for (const n of [6, 5, 4, 3, 2]) {
+    for (const run of runs) {
+      for (let i = 0; i + n <= run.length; i++) {
+        const gram = run.slice(i, i + n);
+        if (STOP_GRAMS.has(gram)) continue;
+        if (counted.some((hit) => hit.includes(gram))) continue;
+        if (!blob.includes(gram)) continue;
+        const docs = entryCount(gram);
+        if (docs === 0) continue;
+        score += (n * n) / docs;
+        counted.push(gram);
+      }
+    }
+  }
+  return score;
+}
+
+function scoreEntry(entry: CorpusEntry, text: string): number {
+  let score = overlapScore(entry.blob, text);
   for (const keyword of entry.keywords) {
     const needle = fold(keyword);
     if (needle.length >= 2 && text.includes(needle)) {
@@ -270,14 +320,14 @@ export function answerHistorian(message: string, _history: HistorianTurn[] = [])
   }
 
   if (/詳細|講多|然後呢|還有呢|繼續說|唔該再|再講/.test(text) && lastEntryId) {
-    const previous = ENTRIES.find((entry) => entry.id === lastEntryId);
+    const previous = CORPUS.find((entry) => entry.id === lastEntryId);
     if (previous?.more) return previous.more;
     return '剛才那段，船上能記的大概就是這樣。換一個港口，或換一次航行，我再往下說。';
   }
 
-  let best: Entry | null = null;
+  let best: CorpusEntry | null = null;
   let bestScore = 0;
-  for (const entry of ENTRIES) {
+  for (const entry of CORPUS) {
     const score = scoreEntry(entry, text);
     if (score > bestScore) {
       best = entry;

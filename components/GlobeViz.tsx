@@ -118,7 +118,16 @@ const GlobeViz: React.FC<GlobeVizProps> = ({ locations, routes, activeLocationId
   }, [activeLocationId, locations]);
 
   const labelData = useMemo(() => {
-    return locations.map((loc) => ({ ...loc, selected: loc.id === activeLocationId }));
+    // Chinese names only. Spreading the whole location also passed `name`
+    // ("Nanjing", "Champa"), which the globe drew under the Chinese label
+    // and then clipped to fragments such as "mpa".
+    return locations.map((loc) => ({
+      id: loc.id,
+      lat: loc.lat,
+      lng: loc.lng,
+      nameCn: loc.nameCn,
+      selected: loc.id === activeLocationId,
+    }));
   }, [locations, activeLocationId]);
 
   const shipObject = useCallback(() => {
@@ -156,6 +165,9 @@ const GlobeViz: React.FC<GlobeVizProps> = ({ locations, routes, activeLocationId
     name.style.fontSize = loc.selected ? '18px' : '14px';
     name.style.textShadow = '0 2px 4px #000';
     name.style.whiteSpace = 'nowrap';
+    name.style.overflow = 'visible';
+    name.style.maxWidth = 'none';
+    name.style.lineHeight = '1.2';
     name.style.marginBottom = '4px';
 
     const dot = document.createElement('div');
@@ -192,6 +204,8 @@ const GlobeViz: React.FC<GlobeVizProps> = ({ locations, routes, activeLocationId
         objectAltitude={0.02}
         objectFacesSurface={true}
         objectThreeObject={shipObject}
+        labelsData={[]}
+        pointsData={[]}
         htmlElementsData={labelData}
         htmlLat="lat"
         htmlLng="lng"
