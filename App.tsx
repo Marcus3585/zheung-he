@@ -537,8 +537,8 @@ const App: React.FC = () => {
             />
             
             <PaperCard className="p-8 mb-8 text-left space-y-4 leading-relaxed text-lg">
-                <p>永樂三年，江風還帶着春寒。皇上把寶船交給你，要你替大明朝向西洋各國問個好。</p>
-                <p>這一趟會經過<strong className="text-imperial-red">十一個航段</strong>。有時躲風暴，有時跟海盜周旋，有時只是把絲綢送出去，換一句真心話。皇上的耐心有限，水手的水桶也有限。</p>
+                <p>永樂三年（1405年），明成祖遣正使太監鄭和統領舟師，展開首次下西洋遠航。船隊載着絲綢、瓷器與詔書揚帆出海，奉命通使西洋諸國，宣示朝廷德威並頒行賞賜，在季候風吹拂的浩瀚航道上，開啟明初官方海外交往的序幕。</p>
+                <p>遊戲裡你會走<strong className="text-imperial-red">十一個航段</strong>。頭一程是在劉家港集結，再沿岸南下候風，不是盛夏直渡南海。麒麟是後來的事。皇上的耐心有限，水手的水桶也有限。</p>
                 <p className="text-sm text-imperial-ink/60 mt-4 border-t border-imperial-ink/10 pt-2">
                     想自己掌舵，就按「啟航挑戰」。想先沿着鄭和的腳印走一遍，就按「史實漫遊」。你不用做完美的人，船還在，路就還沒斷。
                 </p>
