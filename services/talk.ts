@@ -1,4 +1,4 @@
-import { BondShift, ChoiceEffects, GameStats, StatType } from '../types';
+import { BondShift, GameStats, StatType } from '../types';
 import { bondName } from '../data/characters';
 
 export interface TalkEffects {
@@ -145,31 +145,30 @@ function clampStat(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-export function describeEffects(effects: TalkEffects | ChoiceEffects | undefined, bonds?: BondShift[], qilin = false): string[] {
-  const labels: string[] = [];
-  if (!effects && !bonds?.length && !qilin) return labels;
-  const bag = effects ?? {};
-  if (bag.trust) labels.push(`信任 ${bag.trust > 0 ? '+' : ''}${bag.trust}`);
-  if (bag.morale) labels.push(`士氣 ${bag.morale > 0 ? '+' : ''}${bag.morale}`);
-  if (bag.knowledge) labels.push(`學識 ${bag.knowledge > 0 ? '+' : ''}${bag.knowledge}`);
-  if (bag.connections) labels.push(`人脈 ${bag.connections > 0 ? '+' : ''}${bag.connections}`);
-  if (bag.silver) labels.push(`銀兩 ${bag.silver > 0 ? '+' : ''}${bag.silver}`);
-  for (const shift of bonds ?? []) {
-    if (!shift.delta) continue;
-    labels.push(`${bondName(shift.id)} ${shift.delta > 0 ? '+' : ''}${shift.delta}`);
-  }
-  if (qilin) labels.push('獲得麒麟！');
-  return labels;
-}
-
 function mergeNumber(base: number | undefined, extra: number | undefined): number | undefined {
   if (base == null && extra == null) return undefined;
   return (base ?? 0) + (extra ?? 0);
 }
 
+export function mergeBonds(shifts: BondShift[] | undefined): BondShift[] | undefined {
+  if (!shifts?.length) return undefined;
+  const totals = new Map<string, number>();
+  for (const shift of shifts) {
+    totals.set(shift.id, (totals.get(shift.id) ?? 0) + shift.delta);
+  }
+  const merged = [...totals.entries()]
+    .filter(([, delta]) => delta !== 0)
+    .map(([id, delta]) => ({ id, delta }));
+  return merged.length ? merged : undefined;
+}
+
 export function mergeEffects(base: TalkEffects | undefined, extra: TalkEffects | undefined): TalkEffects {
-  if (!extra) return base ?? {};
-  if (!base) return extra;
+  if (!extra) {
+    return { ...(base ?? {}), bonds: mergeBonds(base?.bonds) };
+  }
+  if (!base) {
+    return { ...extra, bonds: mergeBonds(extra.bonds) };
+  }
   return {
     trust: mergeNumber(base.trust, extra.trust),
     morale: mergeNumber(base.morale, extra.morale),
@@ -178,8 +177,57 @@ export function mergeEffects(base: TalkEffects | undefined, extra: TalkEffects |
     silver: mergeNumber(base.silver, extra.silver),
     flags: [...(base.flags ?? []), ...(extra.flags ?? [])],
     clearFlags: [...(base.clearFlags ?? []), ...(extra.clearFlags ?? [])],
-    bonds: [...(base.bonds ?? []), ...(extra.bonds ?? [])],
+    bonds: mergeBonds([...(base.bonds ?? []), ...(extra.bonds ?? [])]),
   };
+}
+
+/** Badges for what actually changed, after caps. A clamped +0 is omitted. */
+export function changeLabels(before: GameStats, after: GameStats, qilin = false): string[] {
+  const labels: string[] = [];
+  const trust = after.trust - before.trust;
+  const morale = after.morale - before.morale;
+  const knowledge = after.knowledge - before.knowledge;
+  const connections = after.connections - before.connections;
+  const silver = after.silver - before.silver;
+  if (trust) labels.push(`信任 ${trust > 0 ? '+' : ''}${trust}`);
+  if (morale) labels.push(`士氣 ${morale > 0 ? '+' : ''}${morale}`);
+  if (knowledge) labels.push(`學識 ${knowledge > 0 ? '+' : ''}${knowledge}`);
+  if (connections) labels.push(`人脈 ${connections > 0 ? '+' : ''}${connections}`);
+  if (silver) labels.push(`銀兩 ${silver > 0 ? '+' : ''}${silver}`);
+  const ids = new Set([...Object.keys(before.bonds), ...Object.keys(after.bonds)]);
+  for (const id of ids) {
+    const delta = (after.bonds[id] ?? 0) - (before.bonds[id] ?? 0);
+    if (delta) labels.push(`${bondName(id)} ${delta > 0 ? '+' : ''}${delta}`);
+  }
+  if (qilin && !before.hasQilin && after.hasQilin) labels.push('獲得麒麟！');
+  return labels;
+}
+
+/**
+ * Apply one crisis choice once. The advertised silver cost is taken even when
+ * the knowledge check fails, then other effects are added. Each stat and each
+ * person appears in the badge list at most once.
+ */
+export function resolveCrisis(
+  prev: GameStats,
+  effects: TalkEffects,
+  paidSilver: number,
+  qilin = false,
+): { stats: GameStats; labels: string[] } {
+  const paid: GameStats = {
+    ...prev,
+    flags: [...prev.flags],
+    bonds: { ...prev.bonds },
+    silver: Math.max(0, prev.silver - Math.max(0, paidSilver)),
+  };
+  const { stats } = applyTalkToStats(paid, effects);
+  if (qilin) stats.hasQilin = true;
+  const labels: string[] = [];
+  if (paidSilver) labels.push(`銀兩 -${paidSilver}`);
+  for (const label of changeLabels(paid, stats, qilin)) {
+    labels.push(label);
+  }
+  return { stats, labels };
 }
 
 /**
@@ -274,10 +322,10 @@ export function applyTalkToStats(prev: GameStats, effects?: TalkEffects): { stat
   for (const flag of effects?.clearFlags ?? []) {
     next.flags = next.flags.filter((item) => item !== flag);
   }
-  for (const shift of effects?.bonds ?? []) {
+  for (const shift of mergeBonds(effects?.bonds) ?? []) {
     next.bonds[shift.id] = clampStat((next.bonds[shift.id] ?? 0) + shift.delta, 0, 100);
   }
-  return { stats: next, labels: describeEffects(effects, effects?.bonds) };
+  return { stats: next, labels: changeLabels(prev, next) };
 }
 
 export function findScene(scenes: TalkScene[], locationId: string, kind: TalkScene['kind']): TalkScene {

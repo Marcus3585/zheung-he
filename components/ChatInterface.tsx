@@ -44,7 +44,7 @@ const ChatInterface: React.FC = () => {
     return (
       <button 
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 bg-imperial-gold hover:bg-yellow-600 text-imperial-ink font-bold p-4 rounded-full shadow-xl transition-transform hover:scale-105 flex items-center gap-2 border-2 border-imperial-parchment"
+        className="fixed bottom-4 left-4 z-50 bg-imperial-gold hover:bg-yellow-600 text-imperial-ink font-bold p-4 rounded-full shadow-xl transition-transform hover:scale-105 flex items-center gap-2 border-2 border-imperial-parchment"
       >
         <MessageSquare size={24} />
         <span className="hidden md:inline font-serif">詢問史官</span>
@@ -53,7 +53,7 @@ const ChatInterface: React.FC = () => {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex w-[min(94vw,28rem)] h-[min(82vh,40rem)] flex-col bg-imperial-parchment text-imperial-ink rounded-xl border-2 border-imperial-ink/30 shadow-2xl overflow-hidden font-serif">
+    <div className="fixed bottom-4 left-4 z-50 flex w-[min(94vw,28rem)] h-[min(82vh,40rem)] flex-col bg-imperial-parchment text-imperial-ink rounded-xl border-2 border-imperial-ink/30 shadow-2xl overflow-hidden font-serif">
       <div className="flex items-center gap-3 p-3 border-b border-imperial-ink/10 bg-imperial-gold/15 shrink-0">
         <HistoricImage
           src={ILLUSTRATIONS.historian.src}

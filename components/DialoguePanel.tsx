@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Maximize2, Minimize2 } from 'lucide-react';
 import { CharacterDef } from '../data/characters';
 
@@ -45,6 +45,25 @@ const DialoguePanel: React.FC<DialoguePanelProps> = ({
   onToggleMinimized,
   footnote,
 }) => {
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [moreBelow, setMoreBelow] = useState(false);
+
+  useEffect(() => {
+    const el = bodyRef.current;
+    if (!el) return;
+    const check = () => {
+      setMoreBelow(el.scrollHeight - el.scrollTop - el.clientHeight > 12);
+    };
+    check();
+    el.addEventListener('scroll', check);
+    const observer = new ResizeObserver(check);
+    observer.observe(el);
+    return () => {
+      el.removeEventListener('scroll', check);
+      observer.disconnect();
+    };
+  }, [text, narration, aside?.text, blurbOpen]);
+
   if (minimized) {
     return (
       <button
@@ -59,8 +78,8 @@ const DialoguePanel: React.FC<DialoguePanelProps> = ({
   }
 
   return (
-    <aside className="absolute right-3 top-28 bottom-24 z-20 w-[min(24rem,calc(100%-5.5rem))] pointer-events-none flex">
-      <div className="pointer-events-auto flex min-h-0 w-full flex-col overflow-hidden rounded-xl border-2 border-imperial-ink/30 bg-imperial-parchment text-imperial-ink shadow-2xl font-serif">
+    <aside className="absolute right-3 top-24 bottom-3 z-20 w-[min(24rem,calc(100%-1.5rem))] pointer-events-none flex min-h-0 flex-col">
+      <div className="pointer-events-auto flex h-full min-h-0 w-full flex-col overflow-hidden rounded-xl border-2 border-imperial-ink/30 bg-imperial-parchment text-imperial-ink shadow-2xl font-serif">
         <div className="absolute inset-0 bg-imperial-gold/5 pointer-events-none" />
         <header className="relative z-10 flex items-start gap-3 border-b border-imperial-ink/10 px-4 py-3">
           <div className="min-w-0 flex-1">
@@ -95,7 +114,7 @@ const DialoguePanel: React.FC<DialoguePanelProps> = ({
           </p>
         )}
 
-        <div className="relative z-10 min-h-0 flex-1 overflow-y-auto px-4 py-3">
+        <div ref={bodyRef} className="talk-scroll relative z-10 min-h-[7.5rem] flex-1 overflow-y-scroll px-4 py-3">
           <div className="mb-2 flex items-center gap-2">
             <span className="flex h-10 w-10 items-center justify-center rounded-full border border-imperial-ink/15 bg-white text-xl" aria-hidden>
               {speaker.emoji}
@@ -138,8 +157,13 @@ const DialoguePanel: React.FC<DialoguePanelProps> = ({
             </div>
           )}
         </div>
+        {moreBelow && (
+          <div className="relative z-10 shrink-0 border-t border-imperial-gold/40 bg-imperial-gold/15 px-3 py-1 text-center text-xs font-bold text-imperial-red">
+            下面還有
+          </div>
+        )}
 
-        <div className="relative z-10 max-h-[46%] shrink-0 overflow-y-auto border-t border-imperial-ink/10 bg-white/35 px-3 py-3">
+        <div className="talk-scroll relative z-10 max-h-[52%] min-h-0 shrink-0 overflow-y-auto border-t border-imperial-ink/10 bg-white/35 px-3 py-2">
           {footnote && <p className="mb-2 text-[11px] text-imperial-ink/55">{footnote}</p>}
           <div className="grid gap-2">
             {choices.map((choice) => (

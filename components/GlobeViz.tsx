@@ -8,6 +8,8 @@ interface GlobeVizProps {
   locations: Location[];
   routes: Route[];
   activeLocationId?: string;
+  /** Pixels kept clear on the right for the dialogue or history card. */
+  rightClearance?: number;
 }
 
 /**
@@ -21,10 +23,12 @@ const SHIP_MODEL_URL = '';
 const EARTH_DAY = '/textures/earth-blue-marble.jpg';
 const EARTH_BUMP = '/textures/earth-topology.png';
 
-const GlobeViz: React.FC<GlobeVizProps> = ({ locations, routes, activeLocationId }) => {
+const GlobeViz: React.FC<GlobeVizProps> = ({ locations, routes, activeLocationId, rightClearance = 16 }) => {
   const globeEl = useRef<GlobeMethods | undefined>(undefined);
   const readyRef = useRef(false);
   const labelEls = useRef<Map<string, HTMLDivElement>>(new Map());
+  const clearanceRef = useRef(rightClearance);
+  clearanceRef.current = rightClearance;
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [loadedModel, setLoadedModel] = useState<THREE.Group | null>(null);
 
@@ -165,15 +169,18 @@ const GlobeViz: React.FC<GlobeVizProps> = ({ locations, routes, activeLocationId
     wrap.style.position = 'absolute';
     wrap.style.left = '0';
     wrap.style.top = '0';
-    wrap.style.display = 'flex';
-    wrap.style.flexDirection = 'column';
-    wrap.style.alignItems = 'center';
-    wrap.style.transform = 'translate(-50%, -120%)';
-    wrap.style.pointerEvents = 'none';
+    wrap.style.width = '0';
+    wrap.style.height = '0';
     wrap.style.overflow = 'visible';
+    wrap.style.pointerEvents = 'none';
 
     const name = document.createElement('div');
+    name.className = 'port-name';
     name.textContent = loc.nameCn ?? '';
+    name.style.position = 'absolute';
+    name.style.left = '0';
+    name.style.top = '0';
+    name.style.transform = 'translate(-50%, calc(-100% - 8px))';
     name.style.fontFamily = '"Noto Serif TC", "Songti TC", serif';
     name.style.color = loc.selected ? '#FFD700' : '#F0E6D2';
     name.style.fontWeight = '700';
@@ -186,6 +193,10 @@ const GlobeViz: React.FC<GlobeVizProps> = ({ locations, routes, activeLocationId
     name.style.marginBottom = '4px';
 
     const dot = document.createElement('div');
+    dot.style.position = 'absolute';
+    dot.style.left = '0';
+    dot.style.top = '0';
+    dot.style.transform = 'translate(-50%, -50%)';
     const dotSize = loc.selected ? '12px' : '8px';
     dot.style.width = dotSize;
     dot.style.height = dotSize;
@@ -207,26 +218,51 @@ const GlobeViz: React.FC<GlobeVizProps> = ({ locations, routes, activeLocationId
       const globe = globeEl.current;
       if (globe && readyRef.current) {
         const width = window.innerWidth;
+        const margin = 8;
+        const rightLimit = width - clearanceRef.current;
+        const pending: { name: HTMLElement; x: number; y: number; w: number; h: number }[] = [];
         for (const loc of locations) {
           const wrap = labelEls.current.get(loc.id);
-          if (!wrap) continue;
+          const name = wrap?.querySelector('.port-name') as HTMLElement | null;
+          const anchor = wrap?.parentElement;
+          if (!name || (anchor && anchor.style.display === 'none')) continue;
           let x = width / 2;
+          let y = window.innerHeight / 2;
           try {
             const point = globe.getScreenCoords(loc.lat, loc.lng, 0.02);
-            if (point && Number.isFinite(point.x)) x = point.x;
+            if (point && Number.isFinite(point.x) && Number.isFinite(point.y)) {
+              x = point.x;
+              y = point.y;
+            }
           } catch {
-            // The globe is still spinning up. Leave the label centered.
+            // The globe is still spinning up.
           }
-          if (x < 170) {
-            wrap.style.transform = 'translate(0, -120%)';
-            wrap.style.alignItems = 'flex-start';
-          } else if (x > width - 220) {
-            wrap.style.transform = 'translate(-100%, -120%)';
-            wrap.style.alignItems = 'flex-end';
-          } else {
-            wrap.style.transform = 'translate(-50%, -120%)';
-            wrap.style.alignItems = 'center';
+          pending.push({
+            name,
+            x,
+            y,
+            w: name.offsetWidth || 72,
+            h: name.offsetHeight || 18,
+          });
+        }
+        pending.sort((a, b) => a.y - b.y);
+        const placed: { left: number; right: number; top: number; bottom: number }[] = [];
+        for (const item of pending) {
+          let left = item.x - item.w / 2;
+          if (left < margin) left = margin;
+          if (left + item.w > rightLimit - margin) left = rightLimit - margin - item.w;
+          if (left < margin) left = margin;
+          let top = item.y - item.h - 10;
+          for (let guard = 0; guard < 8; guard += 1) {
+            const pad = 10;
+            const hit = placed.find((rect) =>
+              left < rect.right + pad && left + item.w > rect.left - pad && top < rect.bottom + pad && top + item.h > rect.top - pad,
+            );
+            if (!hit) break;
+            top = hit.top - item.h - pad;
           }
+          placed.push({ left, right: left + item.w, top, bottom: top + item.h });
+          item.name.style.transform = `translate(${left - item.x}px, ${top - item.y}px)`;
         }
       }
       frame = requestAnimationFrame(placeLabels);

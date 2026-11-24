@@ -15,10 +15,10 @@ import {
   applyTalkToStats,
   attitudeLabel,
   bondOf,
-  describeEffects,
   findScene,
   mergeEffects,
   resolveChoices,
+  resolveCrisis,
   resolveText,
   sideEffects,
   TalkChoice,
@@ -247,10 +247,10 @@ const App: React.FC = () => {
   };
 
   const handleTalkChoice = (choice: TalkChoice) => {
-    const { stats: next } = applyTalkToStats(statsRef.current, choice.effects);
+    const { stats: next, labels } = applyTalkToStats(statsRef.current, choice.effects);
     statsRef.current = next;
     setStats(next);
-    setTalkChanges(describeEffects(choice.effects, choice.effects?.bonds));
+    setTalkChanges(labels);
     if (choice.next) setNodeId(choice.next);
     else finishTalkScene(next);
   };
@@ -276,10 +276,6 @@ const App: React.FC = () => {
   const handleChoice = (choice: GameChoice) => {
     if (choice.cost && stats.silver < choice.cost.silver) return;
     if (!requirementMet(choice)) return;
-
-    if (choice.cost) {
-      setStats(s => ({...s, silver: s.silver - choice.cost!.silver}));
-    }
 
     if (choice.needsChallenge) {
       setPendingChoice(choice);
@@ -329,8 +325,8 @@ const App: React.FC = () => {
   };
 
   const applyEffects = (effects: ChoiceEffects, text: string, success: boolean, isQilin = false, choice?: GameChoice) => {
-    // Badges are built once, outside any state updater. React Strict Mode
-    // invokes updaters twice in development and would otherwise repeat them.
+    // One write, outside any state updater, so a silver cost cannot be
+    // overwritten by a second update and badges are not listed twice.
     const prev = statsRef.current;
     const addedFlags = success ? (choice?.setsFlags ?? []) : (choice?.setsFlagsOnFail ?? []);
     const addedBonds = success ? (choice?.bonds ?? []) : (choice?.bondsOnFail ?? []);
@@ -346,15 +342,10 @@ const App: React.FC = () => {
       },
       sideEffects(prev.flags, addedFlags),
     );
-    const { stats: next } = applyTalkToStats(prev, merged);
-    if (success && isQilin) next.hasQilin = true;
+    const { stats: next, labels } = resolveCrisis(prev, merged, choice?.cost?.silver ?? 0, success && isQilin);
     statsRef.current = next;
     setStats(next);
-    setResultMessage({
-      success,
-      text,
-      changes: describeEffects(merged, merged.bonds, success && isQilin),
-    });
+    setResultMessage({ success, text, changes: labels });
     setPhase('result');
   };
 
@@ -412,6 +403,11 @@ const App: React.FC = () => {
           locations={LOCATIONS} 
           routes={ROUTES} 
           activeLocationId={getActiveLocationId()}
+          rightClearance={
+            phase === 'history' || ((phase === 'playing' || phase === 'dialogue') && !isUiMinimized)
+              ? 440
+              : 16
+          }
         />
       </ErrorBoundary>
 
@@ -560,13 +556,13 @@ const App: React.FC = () => {
 
       {/* History card stays on the right so the left limb of the globe — where 木骨都束 sits when the camera is on 劉家港 — stays clear. */}
       {phase === 'history' && currentHistoryEvent && (
-        <div className="absolute right-3 bottom-24 z-20 w-[min(24rem,calc(100%-5.5rem))] max-h-[min(32rem,68vh)] overflow-y-auto pointer-events-auto">
+        <div className="absolute right-3 bottom-3 z-20 w-[min(24rem,calc(100%-5.5rem))] max-h-[calc(100vh-5.5rem)] overflow-y-auto pointer-events-auto">
              <PaperCard className="w-full">
                 <div className="p-6">
                     <HistoricImage
                         src={LOCATIONS.find(l => l.id === currentHistoryEvent.locationId)?.image}
                         alt={LOCATIONS.find(l => l.id === currentHistoryEvent.locationId)?.imageAlt || currentHistoryEvent.title}
-                        className="w-full h-32 object-cover rounded-lg mb-4 border border-imperial-ink/10"
+                        className="w-full h-24 object-cover rounded-lg mb-3 border border-imperial-ink/10"
                     />
                     <div className="flex items-center gap-3 mb-4 border-b border-imperial-ink/10 pb-3">
                         <div>
