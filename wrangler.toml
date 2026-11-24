@@ -1,0 +1,9 @@
+# Vite static build → Cloudflare Workers static assets.
+# SPA fallback: unknown paths serve index.html.
+# No secrets belong in this file.
+name = "zheung-he"
+compatibility_date = "2026-11-17"
+
+[assets]
+directory = "./dist"
+not_found_handling = "single-page-application"

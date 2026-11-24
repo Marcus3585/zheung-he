@@ -1,18 +1,157 @@
 import { Location, Route, GameEvent, QuizQuestion, HistoryMilestone } from './types';
 
-// 地點數據 (對應 3D 地圖座標)
+export const ILLUSTRATIONS = {
+  ship: {
+    src: '/art/ship.jpg',
+    alt: '明代寶船：平底闊身、高尾樓、五桅，帆是赭紅與藤黃的硬帆',
+  },
+  historian: {
+    src: '/art/historian.jpg',
+    alt: '船艙裡的史官在燈下執筆，圓窗外是海',
+  },
+  registration: {
+    src: '/art/registration.jpg',
+    alt: '劉家港碼頭，水手登船前聚集在寶船旁',
+  },
+  quiz: {
+    src: '/art/quiz.jpg',
+    alt: '艙裡的牽星板、羅盤、毛筆和海圖，窗外是硬帆',
+  },
+};
+
 export const LOCATIONS: Location[] = [
-  { id: 'nanjing', name: 'Nanjing', nameCn: '南京 (劉家港)', lat: 31.5, lng: 121.1, description: '明朝航海起點，六國碼頭。', tradeGoods: ['絲綢', '瓷器'] },
-  { id: 'champa', name: 'Champa', nameCn: '占城', lat: 13.9, lng: 109.3, description: '今越南南部，重要的首個補給站。', tradeGoods: ['稻米', '烏木'] },
-  { id: 'palembang', name: 'Palembang', nameCn: '舊港', lat: -2.97, lng: 104.77, description: '剿滅海盜陳祖義之地。', tradeGoods: ['香料'] },
-  { id: 'malacca', name: 'Malacca', nameCn: '滿剌加', lat: 2.2, lng: 102.25, description: '戰略海峽控制點，設有官廠。', tradeGoods: ['錫', '倉儲'] },
-  { id: 'semudera', name: 'Semudera', nameCn: '蘇門答腊', lat: 5.18, lng: 97.14, description: '蘇門答臘北部，曾發生蘇干剌叛亂。', tradeGoods: ['胡椒', '硫磺'] },
-  { id: 'ceylon', name: 'Ceylon', nameCn: '錫蘭', lat: 6.9, lng: 79.8, description: '佛牙寺所在地，曾發生衝突。', tradeGoods: ['寶石', '珍珠'] },
-  { id: 'indianocean', name: 'Indian Ocean', nameCn: '印度洋', lat: 0, lng: 88, description: '廣袤的海洋，需牽星術導航。', tradeGoods: [] }, // 虛擬節點用於事件
-  { id: 'calicut', name: 'Calicut', nameCn: '古里', lat: 11.25, lng: 75.78, description: '西洋大港，主要貿易中心。', tradeGoods: ['胡椒', '棉布'] },
-  { id: 'hormuz', name: 'Hormuz', nameCn: '忽魯謨斯', lat: 27.1, lng: 56.4, description: '波斯灣門戶，極其富庶。', tradeGoods: ['地毯', '馬匹'] },
-  { id: 'bengal', name: 'Bengal', nameCn: '榜葛剌', lat: 23.0, lng: 90.0, description: '進貢麒麟之國。', tradeGoods: ['長頸鹿'] },
-  { id: 'mogadishu', name: 'Mogadishu', nameCn: '木骨都束', lat: 2.04, lng: 45.34, description: '非洲東岸重鎮，鄭和艦隊遠航極點之一。', tradeGoods: ['龍涎香', '鴕鳥'] },
+  {
+    id: 'nanjing',
+    name: 'Nanjing',
+    nameCn: '南京（劉家港）',
+    lat: 31.5,
+    lng: 121.1,
+    description: '明朝航海起點，六國碼頭。',
+    blurb: '永樂三年夏秋，舟師先在太倉劉家港集結，祭過天妃，再沿岸南下福建長樂太平港候風。冬天東北季候風起了，才由五虎門放洋。不是盛夏從這裡直衝南海。',
+    tradeGoods: ['絲綢', '瓷器'],
+    image: '/art/nanjing.jpg',
+    imageAlt: '劉家港啟航，寶船隊駛出長江口',
+  },
+  {
+    id: 'champa',
+    name: 'Champa',
+    nameCn: '占城',
+    lat: 13.9,
+    lng: 109.3,
+    description: '今越南南部，重要的首個補給站。',
+    blurb: '占城在今越南中南部，是出南海後第一個肯接待大明船的王國。這裡補米、修桅，再往南走。馬歡記下了他們的衣服和禮俗。',
+    tradeGoods: ['稻米', '烏木'],
+    image: '/art/champa.jpg',
+    imageAlt: '占城海岸，磚塔與停泊的寶船',
+  },
+  {
+    id: 'palembang',
+    name: 'Palembang',
+    nameCn: '舊港',
+    lat: -2.97,
+    lng: 104.77,
+    description: '剿滅海盜陳祖義之地。',
+    blurb: '舊港即今巨港。華商陳祖義在此詐降，想劫寶船。鄭和識破之後把他生擒，押回南京。海峽這一段因此安靜了許多年。',
+    tradeGoods: ['香料'],
+    image: '/art/palembang.jpg',
+    imageAlt: '舊港河上，寶船與海寇的船相對',
+  },
+  {
+    id: 'malacca',
+    name: 'Malacca',
+    nameCn: '滿剌加',
+    lat: 2.2,
+    lng: 102.25,
+    description: '戰略海峽控制點，設有官廠。',
+    blurb: '滿剌加的君主願意合作，船隊才在這裡設官廠：木柵裡是倉廒，給分艙的船修整、囤貨，再候五月的西南季候風一起回去。這是中轉倉庫，不是佔下來的地方。',
+    tradeGoods: ['錫', '倉儲'],
+    image: '/art/malacca.jpg',
+    imageAlt: '滿剌加海峽岸邊的官廠與寶船',
+  },
+  {
+    id: 'semudera',
+    name: 'Semudera',
+    nameCn: '蘇門答剌',
+    lat: 5.18,
+    lng: 97.14,
+    description: '蘇門答臘北部，曾發生蘇干剌叛亂。',
+    blurb: '蘇門答剌在島的北端，胡椒和硫磺從這裡上船。第四次航行時國內亂，鄭和按舊約捉住蘇幹剌。過了這裡，下一片就是大洋。',
+    tradeGoods: ['胡椒', '硫磺'],
+    image: '/art/semudera.jpg',
+    imageAlt: '蘇門答剌港口，遠山有煙，灣裡停着寶船',
+  },
+  {
+    id: 'ceylon',
+    name: 'Ceylon',
+    nameCn: '錫蘭',
+    lat: 6.9,
+    lng: 79.8,
+    description: '佛牙寺所在地，曾發生衝突。',
+    blurb: '錫蘭山即今斯里蘭卡。第三次，國王亞烈苦奈兒誘船入城又去劫貨。鄭和反攻王城，把國王帶回南京，朱棣後來另立新王，朝貢仍繼續。',
+    tradeGoods: ['寶石', '珍珠'],
+    image: '/art/ceylon.jpg',
+    imageAlt: '錫蘭海岸，山上佛塔，海面上的寶船',
+  },
+  {
+    id: 'indianocean',
+    name: 'Indian Ocean',
+    nameCn: '印度洋',
+    lat: 0,
+    lng: 88,
+    description: '廣袤的海洋，需牽星術導航。',
+    blurb: '看不見岸的時候，就靠羅盤和牽星術。星星離海平面有多高，用一組木板去量。無風的日子，淡水比銀子金貴。',
+    tradeGoods: ['淡水'],
+    image: '/art/indianocean.jpg',
+    imageAlt: '印度洋無風的海面，寶船帆軟，天邊有星',
+  },
+  {
+    id: 'calicut',
+    name: 'Calicut',
+    nameCn: '古里',
+    lat: 11.25,
+    lng: 75.78,
+    description: '西洋大港，主要貿易中心。',
+    blurb: '古里在今印度卡利卡特，是當時西洋的大市。胡椒和棉布從這裡散去。船隊多次在此分艙，有的去忽魯謨斯，有的去東非。也有人說鄭和病逝於此。',
+    tradeGoods: ['胡椒', '棉布'],
+    image: '/art/calicut.jpg',
+    imageAlt: '古里港的香料市集與停泊的寶船',
+  },
+  {
+    id: 'hormuz',
+    name: 'Hormuz',
+    nameCn: '忽魯謨斯',
+    lat: 27.1,
+    lng: 56.4,
+    description: '波斯灣門戶，極其富庶。',
+    blurb: '忽魯謨斯在波斯灣口。石頭城、熱風、忙亂的碼頭。地毯、馬和寶石在這裡換大明的絲綢與瓷器。它是這條航線西邊最富的一站。',
+    tradeGoods: ['地毯', '馬匹'],
+    image: '/art/hormuz.jpg',
+    imageAlt: '忽魯謨斯乾熱的石城與灣裡的寶船',
+  },
+  {
+    id: 'bengal',
+    name: 'Bengal',
+    nameCn: '榜葛剌',
+    lat: 23.0,
+    lng: 90.0,
+    description: '進貢麒麟之國。',
+    blurb: '麒麟不是永樂三年首航帶回來的。永樂十二年（1414）秋，第四次下西洋期間，榜葛剌使臣把一頭長頸鹿送進北京。翌年麻林也獻過。朝中把牠比成瑞獸，沈度畫過《瑞應麒麟圖》。',
+    tradeGoods: ['長頸鹿'],
+    image: '/art/bengal.jpg',
+    imageAlt: '榜葛剌河岸，長頸鹿立在明使與當地人之間',
+  },
+  {
+    id: 'mogadishu',
+    name: 'Mogadishu',
+    nameCn: '木骨都束',
+    lat: 2.04,
+    lng: 45.34,
+    description: '非洲東岸重鎮，鄭和艦隊遠航極點之一。',
+    blurb: '木骨都束在今摩加迪沙。珊瑚石的城面對印度洋。分艙的船到過這裡，帶回去龍涎香，也帶回去被叫做花福鹿的斑馬。',
+    tradeGoods: ['龍涎香', '鴕鳥'],
+    image: '/art/mogadishu.jpg',
+    imageAlt: '木骨都束的珊瑚石城，岸邊有象牙，海上是寶船',
+  },
 ];
 
 export const ROUTES: Route[] = [
@@ -24,152 +163,233 @@ export const ROUTES: Route[] = [
   { start: 'ceylon', end: 'calicut', voyages: [1] },
   { start: 'calicut', end: 'hormuz', voyages: [1] },
   { start: 'calicut', end: 'bengal', voyages: [1] },
-  { start: 'calicut', end: 'mogadishu', voyages: [1] }, // 新增東非航線
+  { start: 'calicut', end: 'mogadishu', voyages: [1] },
 ];
 
-// 歷史模式里程碑
 export const HISTORY_MILESTONES: HistoryMilestone[] = [
   {
-    year: '1405年 (永樂三年)',
-    title: '第一次下西洋：誓師啟航',
+    year: '1405年（永樂三年）',
+    title: '第一次下西洋：從劉家港出發',
     locationId: 'nanjing',
-    description: '明成祖朱棣命鄭和率領兩萬七千餘人、寶船六十餘艘，從蘇州劉家港出發。這是人類歷史上規模空前的海上遠征，旨在「宣德化而柔遠人」。'
+    description: '永樂三年夏秋，舟師在太倉劉家港集結，祭過天妃，再南下長樂太平港候風。冬天東北季候風起了，才由五虎門放洋。碑上寫「宣德化而柔遠人」。海本身不聽話。',
   },
   {
     year: '1406年',
-    title: '訪問占城',
+    title: '占城：第一個肯開門的港口',
     locationId: 'champa',
-    description: '艦隊抵達首站占城（今越南中南部）。鄭和在此進行了友好的貿易與外交活動，確立了占城作為後續航行重要中轉站的地位。'
+    description: '船隊在占城補給、問安。這裡以後每次南下幾乎都要停。先把第一站走穩，後面的海才有地方靠。',
   },
   {
     year: '1407年',
-    title: '舊港擒賊',
+    title: '舊港：陳祖義的詐降',
     locationId: 'palembang',
-    description: '返航途中經過舊港（今印尼巨港），遭遇海盜陳祖義詐降偷襲。鄭和指揮艦隊擊潰海盜，生擒陳祖義，肅清了馬六甲海峽的海路。'
+    description: '回航經過舊港，陳祖義嘴上歸附，手卻準備劫船。鄭和將計就計，生擒了他。海峽清靜了，南京也有了一份可以上奏的戰報。',
   },
   {
     year: '1409年',
-    title: '第三次下西洋：建倉滿剌加',
+    title: '滿剌加：岸上的官廠',
     locationId: 'malacca',
-    description: '鄭和在滿剌加（馬六甲）建立「官廠」，作為儲存物資、集結艦隊的海外基地。此舉極大促進了東西方貿易的中轉與發展。'
+    description: '滿剌加的君主肯合作，船隊才圍起木柵做官廠。裡面是糧和賞賜，外面仍是人家的國。分艙的船在這裡會合，候西南季候風再一起回去。',
   },
   {
     year: '1411年',
-    title: '錫蘭山之戰',
+    title: '錫蘭：國王設了伏',
     locationId: 'ceylon',
-    description: '第三次下西洋期間，錫蘭山國王亞烈苦奈兒誘騙鄭和入城並派兵劫奪艦隊。鄭和當機立斷，率精兵突襲王城，生擒國王，展現了極高的軍事才能。'
+    description: '亞烈苦奈兒把鄭和誘進城，又派人去搶岸邊的船。鄭和沒有困死在城裡，帶人取了王城，把國王送回南京。仗打完，朝貢還是接上了。',
   },
   {
-    year: '1413-1415年',
-    title: '第四次下西洋：生擒蘇干剌',
+    year: '1413–1415年',
+    title: '蘇門答剌：蘇幹剌',
     locationId: 'semudera',
-    description: '艦隊到達蘇門答臘（蘇木都剌）。鄭和介入當地內亂，擊敗並俘虜了篡位者蘇干剌，維護了當地政權的穩定與朝貢關係。'
+    description: '當地內亂。鄭和按先王的約定站在一邊，捉住篡位的蘇幹剌。胡椒港恢復了朝貢，船隊也才能安心往西。',
   },
   {
     year: '1414年',
-    title: '麒麟貢入',
+    title: '榜葛剌：那頭被叫做麒麟的鹿',
     locationId: 'bengal',
-    description: '榜葛剌（孟加拉）使者隨艦隊進貢「麒麟」（長頸鹿）。因其形態與中國傳說中的瑞獸吻合，被視為國泰民安的祥瑞之兆，朱棣大悅。'
+    description: '這是永樂十二年（1414）的事，第四次下西洋，不是 1405 年首航順手牽回來的。榜葛剌獻上長頸鹿，朝中稱麒麟。翌年麻林也獻過一頭。',
   },
   {
-    year: '1417-1419年',
-    title: '第五次下西洋：遠涉波斯',
+    year: '1417–1419年',
+    title: '忽魯謨斯：波斯灣口的市',
     locationId: 'hormuz',
-    description: '艦隊最遠到達忽魯謨斯（霍爾木茲）。這裡是波斯灣的貿易樞紐，鄭和在此進行了大量的寶石、地毯與香料貿易，展示了大明工藝品。'
+    description: '熱風裡的石城，碼頭上是地毯、馬和寶石。寶船把絲綢和瓷器擺出來。這是航線西端最富的一站，不是終點的傳說。',
   },
   {
-    year: '1421-1422年',
-    title: '第六次下西洋：分蹤非洲',
+    year: '1421–1422年',
+    title: '木骨都束：船分去了東非',
     locationId: 'mogadishu',
-    description: '鄭和艦隊分蹤航行，部分船隊向西探索，橫渡印度洋，到達了非洲東岸木骨都束（今摩加迪沙）、麻林地等地。這是中國航海史上的壯舉，帶回了「花福鹿」（斑馬）和「獅子」。'
+    description: '不是整支艦隊都擠進同一座港。有的船西渡，到木骨都束、麻林地。帶回來的花福鹿是斑馬。非洲東岸，是這支船隊真正踏過的遠岸。',
   },
   {
-    year: '1431-1433年',
-    title: '第七次下西洋：最後的遠航',
+    year: '1431–1433年',
+    title: '第七次：最後一次鼓聲',
     locationId: 'calicut',
-    description: '60歲高齡的鄭和最後一次出征。他在歸途中於古里（或說航行途中）病逝。第七次下西洋標誌著大航海時代的落幕，隨後大明轉向海禁。'
-  }
+    description: '宣德年間，六十歲上下的鄭和再出江。一說他病逝於古里，一說死在歸途。史書沒有寫死一個地點。船隊還是回來了。這樣規模的官船，之後沒有再派出。',
+  },
 ];
 
-// 遊戲題庫 - 擴充版
 export const QUIZ_QUESTIONS: QuizQuestion[] = [
-    { question: '鄭和下西洋始於哪位皇帝在位期間？', options: ['明太祖朱元璋', '明成祖朱棣', '明仁宗朱高熾', '明宣宗朱瞻基'], correct: 1, explanation: '始於明成祖朱棣永樂三年（1405年）。' },
-    { question: '鄭和的艦隊最遠到達哪個地區？', options: ['日本', '印度', '非洲東岸', '歐洲'], correct: 2, explanation: '最遠到達非洲東岸，如木骨都束（今索馬利亞）。' },
-    { question: '鄭和一共進行了多少次下西洋的航行？', options: ['五次', '六次', '七次', '八次'], correct: 2, explanation: '前後歷時近三十年，共七次。' },
-    { question: '鄭和原名馬三保，他的宗教信仰是什麼？', options: ['佛教', '道教', '伊斯蘭教', '基督教'], correct: 2, explanation: '他是回族穆斯林，信仰伊斯蘭教。' },
-    { question: '鄭和艦隊中最大的船隻被稱為什麼？', options: ['戰船', '寶船', '龍船', '福船'], correct: 1, explanation: '最大的船隻稱為「寶船」。' },
-    { question: '鄭和下西洋的主要目的是什麼？', options: ['掠奪財富', '宣揚國威', '尋找新大陸', '傳播基督教'], correct: 1, explanation: '目的是「宣德化而柔遠人」，宣揚國威與發展朝貢貿易。' },
-    { question: '鄭和在舊港（今印尼巨港）擊敗了哪個海盜？', options: ['張保仔', '陳祖義', '王直', '鄭芝龍'], correct: 1, explanation: '擊敗並生擒了海盜王陳祖義。' },
-    { question: '鄭和艦隊使用什麼方法在海上確定方位？', options: ['GPS', '牽星術', '雷達', '無線電'], correct: 1, explanation: '使用「牽星術」觀測星象定位。' },
-    { question: '馬歡著有哪本記錄航行見聞的書籍？', options: ['《島夷誌略》', '《瀛涯勝覽》', '《西洋番國志》', '《海國圖志》'], correct: 1, explanation: '馬歡著有《瀛涯勝覽》。' },
-    { question: '「西洋」主要指的是哪個海域？', options: ['太平洋', '大西洋', '印度洋及東南亞', '北冰洋'], correct: 2, explanation: '指文萊以西的東南亞及印度洋海域。' },
-    { question: '榜葛剌國進貢的「麒麟」實際上是什麼？', options: ['大象', '長頸鹿', '獅子', '犀牛'], correct: 1, explanation: '實際上是長頸鹿。' },
-    { question: '鄭和在哪個地方設立了「官廠」？', options: ['占城', '滿剌加', '錫蘭', '古里'], correct: 1, explanation: '在滿剌加（馬六甲）設立了官廠作為補給基地。' },
-    { question: '鄭和艦隊的規模大約有多少人？', options: ['一千人', '五千人', '二萬七千人', '十萬人'], correct: 2, explanation: '首次出航約有二萬七千八百餘人。' },
-    { question: '鄭和下西洋後，明朝實行什麼政策導致衰退？', options: ['開放貿易', '海禁政策', '殖民擴張', '航海鼓勵'], correct: 1, explanation: '明朝後來實行海禁政策，停止了大規模遠航。' },
-    { question: '鄭和被賜姓「鄭」是因為？', options: ['出生鄭州', '靖難之役立功', '祖先姓鄭', '信奉神明'], correct: 1, explanation: '因在靖難之役（鄭村壩戰役）立功，朱棣賜姓鄭。' },
-    { question: '天妃（媽祖）在鄭和航海中扮演什麼角色？', options: ['導航員', '精神信仰', '貿易夥伴', '反對者'], correct: 1, explanation: '鄭和多次在出航前和歸航後祭祀天妃（媽祖），祈求航海平安。' },
-    { question: '鄭和出使西洋時攜帶了大量的什麼物品用於賞賜？', options: ['火藥', '絲綢和瓷器', '羊毛', '奴隸'], correct: 1, explanation: '明朝以精美的絲綢、瓷器等作為賞賜，換取各國的奇珍異寶。' },
-    { question: '哪位皇帝下令停止下西洋並銷毀航海檔案？', options: ['明宣宗', '明英宗', '明成化帝（有爭議）', '明神宗'], correct: 2, explanation: '一般認為是成化年間兵部尚書劉大夏稱檔案已毀（或藏匿），導致具體航海圖籍失傳。' },
-    { question: '鄭和立在福建長樂的碑文叫什麼？', options: ['無字碑', '天妃靈應之記碑', '大唐西域記', '平番碑'], correct: 1, explanation: '《天妃靈應之記》碑詳細記載了前六次航行和第七次出發的細節。' },
-    { question: '寶船的長度約為多少？（根據史書記載）', options: ['20米', '44丈（約130米）', '300米', '80米'], correct: 1, explanation: '據《明史》記載，大寶船長四十四丈四尺，寬十八丈。' },
-    { question: '鄭和訪問非洲帶回了「花福鹿」，其實是？', options: ['梅花鹿', '斑馬', '羚羊', '獵豹'], correct: 1, explanation: '「花福鹿」指的就是斑馬。' },
-    { question: '除了鄭和，還有哪位副使同樣著名？', options: ['王景弘', '戚繼光', '海瑞', '李時珍'], correct: 0, explanation: '王景弘是鄭和的重要副手，多次共同或分隊出使。' },
-    { question: '鄭和艦隊配置了專門負責什麼的人員？', options: ['翻譯官（通事）', '傳教士', '考古學家', '觀光客'], correct: 0, explanation: '艦隊配備了精通各國語言的「通事」（翻譯官）。' },
-    { question: '古里國（今印度卡利卡特）在當時的地位是？', options: ['海盜巢穴', '西洋大港', '無人荒島', '軍事要塞'], correct: 1, explanation: '古里是當時印度洋最重要的貿易中轉港口，被稱為「西洋大港」。' },
-    { question: '鄭和下西洋促進了哪裡的開發？', options: ['南洋（東南亞）', '美洲', '南極洲', '澳洲'], correct: 0, explanation: '大量華人隨之移居南洋，促進了東南亞的經濟與文化發展。' }
+  { question: '鄭和下西洋，是哪一位皇帝在位時開始的？', options: ['明太祖朱元璋', '明成祖朱棣', '明仁宗朱高熾', '明宣宗朱瞻基'], correct: 1, explanation: '是朱棣。永樂三年（1405）從劉家港開出第一支船。後來的宣德才有第七次。' },
+  { question: '船隊最遠走到哪一帶？', options: ['日本', '印度', '非洲東岸', '歐洲'], correct: 2, explanation: '最遠是非洲東岸，例如木骨都束。沒有到歐洲，也不是去找新大陸。' },
+  { question: '鄭和一共出了幾次海？', options: ['五次', '六次', '七次', '八次'], correct: 2, explanation: '七次。中間洪熙年間還停過，不是年年都開船。' },
+  { question: '鄭和本姓馬，他信的是甚麼？', options: ['佛教', '道教', '伊斯蘭教', '基督教'], correct: 2, explanation: '他是回族穆斯林。船隊仍會拜天妃、在錫蘭禮佛。信仰沒有擋住他跟不同的人說話。' },
+  { question: '船隊裡最大的那種船叫甚麼？', options: ['戰船', '寶船', '龍船', '福船'], correct: 1, explanation: '叫寶船。樣子近於福建的福船：底平、船寬、尾樓高，帆是帶橫竹的硬帆。' },
+  { question: '官方說，下西洋主要為了甚麼？', options: ['搶財物', '宣揚國威、以禮待遠人', '尋找新大陸', '傳基督教'], correct: 1, explanation: '碑上寫「宣德化而柔遠人」。是朝貢和通好，不是佔領，也不是傳教。' },
+  { question: '舊港那一仗，鄭和捉住的是誰？', options: ['張保仔', '陳祖義', '王直', '鄭芝龍'], correct: 1, explanation: '陳祖義。他先詐降，再想劫船。鄭和將計就計，把他押回南京。' },
+  { question: '海上沒有岸的時候，他們怎樣知道自己在哪一帶？', options: ['GPS', '牽星術', '雷達', '無線電'], correct: 1, explanation: '牽星術。用牽星板量星星的高度，再配羅盤。衛星是五百年後的事。' },
+  { question: '馬歡寫的那本見聞叫甚麼？', options: ['《島夷誌略》', '《瀛涯勝覽》', '《西洋番國志》', '《海國圖志》'], correct: 1, explanation: '《瀛涯勝覽》。他是通事，書裡是他上岸見過的港口。鞏珍寫的才是《西洋番國志》。' },
+  { question: '明代說的「西洋」，大概是哪一片海？', options: ['太平洋', '大西洋', '印度洋和東南亞西部', '北冰洋'], correct: 2, explanation: '文萊以西，到印度洋，直到阿拉伯和東非。不是大西洋。' },
+  { question: '榜葛剌送來的「麒麟」，其實是甚麼？', options: ['大象', '長頸鹿', '獅子', '犀牛'], correct: 1, explanation: '是長頸鹿。朝中願意叫牠麒麟。兩個名字都留着，才看得到當時的人怎樣想。' },
+  { question: '官廠設在哪裡？', options: ['占城', '滿剌加', '錫蘭', '古里'], correct: 1, explanation: '在滿剌加。倉庫、柵欄、修船的地方，給分艙的船一個會合點。' },
+  { question: '第一次出海，大約有多少人？', options: ['一千人', '五千人', '二萬七千多人', '十萬人'], correct: 2, explanation: '約二萬七千八百人。所以米和淡水，比一場小仗更讓人睡不着。' },
+  { question: '大船隊停了之後，明朝在海上趨於哪一種政策？', options: ['更加鼓勵遠航', '海禁收緊', '去美洲殖民', '把航海當成科舉'], correct: 1, explanation: '官家的寶船沒有再維持。海禁時緊時鬆，民間的船還在走，這樣的艦隊沒有了。' },
+  { question: '朱棣為甚麼賜他姓鄭？', options: ['他出生在鄭州', '靖難之役裡立了功', '祖上姓鄭', '廟裡求來的'], correct: 1, explanation: '燕王起兵，他在鄭村壩那一仗出了力，於是賜姓。本姓仍是馬。' },
+  { question: '天妃（媽祖）在這支船隊裡是甚麼角色？', options: ['掌舵的人', '水手信靠的海神', '貿易的合夥人', '反對出海的人'], correct: 1, explanation: '出海前、歸航後都拜她。她不替人算航線，但大洋上的人需要一個肯聽禱告的名字。' },
+  { question: '用來賞賜各國的，主要是甚麼？', options: ['火藥', '絲綢和瓷器', '羊毛', '勞工'], correct: 1, explanation: '絲綢、瓷器，有時還有銅錢。帶出去的往往比帶回來的更值錢。' },
+  { question: '航海檔案後來下落不明，課堂上常提到誰？', options: ['明宣宗本人', '明英宗', '成化年間的劉大夏（此事有爭論）', '明神宗'], correct: 2, explanation: '有一種說法是劉大夏把檔藏起或毀了。細節史家還在爭。能確定的是細圖失傳，長樂那塊碑還在。' },
+  { question: '福建長樂那塊碑叫甚麼？', options: ['無字碑', '天妃靈應之記', '大唐西域記', '平番碑'], correct: 1, explanation: '《天妃靈應之記》。上面刻着前六次的行程，和第七次即將出發。' },
+  { question: '說到寶船，哪一句比較穩妥？', options: ['《明史》寫的四十四丈已經是定論', '多桅硬帆、水密隔艙，船身宏闊；長度史家仍在爭', '跟後來的歐洲蓋倫戰船同一種帆', '只有一根桅，帆是三角的'], correct: 1, explanation: '《明史》寫過「長四十四丈四尺」，但那不是定案。課堂上先記住工藝：多桅、竹骨硬帆、水密隔艙，官船體勢很大。具體有多長，還有人在量。' },
+  { question: '「花福鹿」是甚麼動物？', options: ['梅花鹿', '斑馬', '羚羊', '獵豹'], correct: 1, explanation: '是斑馬。從東非帶回來的。名字很喜慶，動物本身條紋分明。' },
+  { question: '跟鄭和一起反覆出使的副手，最常被提到的是誰？', options: ['王景弘', '戚繼光', '海瑞', '李時珍'], correct: 0, explanation: '王景弘。船那麼多，本來就不可能每艘都由鄭和親自掌舵。' },
+  { question: '船隊裡專門負責把話譯過來的人叫甚麼？', options: ['通事', '傳教士', '欽天監', '游客'], correct: 0, explanation: '通事。馬歡就是其中一位。沒有他們，禮物送得出去，回答帶不回來。' },
+  { question: '古里在當時是一個怎樣的地方？', options: ['海盜的老巢', '西洋大港', '沒有人的島', '只駐軍的要塞'], correct: 1, explanation: '胡椒和棉布的大市，船隊西航時的主港。今天的卡利卡特。' },
+  { question: '這些航行，長遠來說讓哪裡多了華人的市集和往來？', options: ['南洋', '美洲', '南極', '澳洲'], correct: 0, explanation: '南洋。官船停了以後，人與人的路還在。美洲不在這張海圖上。' },
 ];
 
-// 遊戲事件腳本
 export const GAME_EVENTS: GameEvent[] = [
   {
-      stage: 1, locationId: 'nanjing', icon: '🌊', title: '啟航・南海風雲',
-      description: '艦隊駛離劉家港，進入南海。前方烏雲密佈，風暴將至。',
-      choices: [
-          { title: '【穩健】避開風暴', effects: { trust: -10, morale: 5 }, successText: '行程延誤，皇帝對進度感到不滿。', autoSuccess: true },
-          { title: '【學識】觀星找航道', requirement: { stat: 'knowledge', value: 4 }, requirementText: '需學識≥4', effects: { trust: 10, morale: 5 }, failEffects: { trust: -15, morale: -20 }, successText: '利用牽星術成功穿越！', failText: '判斷失誤，船隻受損，信任大減。', needsChallenge: true },
-          { title: '【激勵】強行通過', requirement: { stat: 'connections', value: 3 }, requirementText: '需人脈≥3', effects: { trust: 15, morale: -10 }, failEffects: { trust: -5, morale: -30 }, successText: '船員爆發勇氣穿越風暴！', failText: '損失慘重，士氣低落。', needsChallenge: true }
-      ]
+    stage: 1,
+    locationId: 'nanjing',
+    icon: '🌊',
+    title: '啟航・先去長樂候風',
+    description: '永樂三年夏秋，船在太倉劉家港集結。老水手說：不要這就橫渡南海。沿着海岸南下福建長樂太平港，等冬天的東北季候風，再由五虎門放洋。眼前沿岸先起了一團雲。',
+    choices: [
+      { title: '繞開。晚一點到，總好過翻船', setsFlags: ['storm_caution'], bonds: [{ id: 'wang', delta: 4 }, { id: 'zhou', delta: 3 }], effects: { trust: -10, morale: 5 }, successText: '船是穩的，人鬆了口氣。只是日程慢了，南京那邊的人會開始數日子。', autoSuccess: true },
+      { title: '牽星，找一條雲縫穿過去', setsFlags: ['storm_skill'], setsFlagsOnFail: ['storm_miss'], bonds: [{ id: 'wang', delta: 2 }, { id: 'fei', delta: 1 }], bondsOnFail: [{ id: 'wang', delta: -3 }], requirement: { stat: 'knowledge', value: 4 }, requirementText: '學識要夠 4', effects: { trust: 10, morale: 5 }, failEffects: { trust: -15, morale: -20 }, successText: '星的高度對得上。船從雲腳下溜過去，桅杆還在。', failText: '星看岔了。船板進了水，皇上的信任也漏了一截。', needsChallenge: true },
+      { title: '擂鼓，叫大家咬着牙闖', setsFlags: ['storm_force'], setsFlagsOnFail: ['storm_break'], bonds: [{ id: 'wang', delta: -3 }], bondsOnFail: [{ id: 'wang', delta: -4 }], requirement: { stat: 'connections', value: 3 }, requirementText: '人脈要夠 3', effects: { trust: 15, morale: -10 }, failEffects: { trust: -5, morale: -30 }, successText: '有人肯跟你喊。船過去了，胳膊卻酸得抬不起來。', failText: '鼓響了，人沒有齊。損失比雲本身還重。', needsChallenge: true },
+    ],
   },
   {
-      stage: 2, locationId: 'champa', icon: '🌴', title: '占城・初次邦交',
-      description: '抵達首站占城，國王態度謹慎，不知大明來意。',
-      choices: [
-          { title: '【威懾】展示實力', effects: { trust: 5, morale: 5 }, failEffects: { trust: -10, morale: -5 }, successText: '旌旗蔽日，國王震懾。', failText: '過於張揚，引發戒心，有損國體。', needsChallenge: true },
-          { title: '【和平】贈送禮物', requirementText: '耗銀20', cost: { silver: 20 }, effects: { trust: 0, morale: 5, connections: 1 }, successText: '建立友好關係，獲取補給。', autoSuccess: true },
-          { title: '【文化】展示文明', requirement: { stat: 'knowledge', value: 3 }, requirementText: '需學識≥3', effects: { trust: 5, morale: 5, knowledge: 1 }, successText: '軟實力外交贏得人心。', autoSuccess: true }
-      ]
+    stage: 2,
+    locationId: 'champa',
+    icon: '🌴',
+    title: '占城・國王在看我們的臉',
+    description: '岸上的人沒有放箭，也沒有笑。國王站在樹蔭裡，想先弄清楚這一大群船是來討東西，還是來送東西。',
+    choices: [
+      { title: '把旗幟和甲士排開，讓他先看見', setsFlags: ['champa_might'], setsFlagsOnFail: ['champa_bluster'], bonds: [{ id: 'champa', delta: 1 }], bondsOnFail: [{ id: 'champa', delta: -2 }], effects: { trust: 5, morale: 5 }, failEffects: { trust: -10, morale: -5 }, successText: '陣勢齊，國王的肩膀鬆了一點。威是有了，話還得慢慢說。', failText: '排得太滿。對方當你是來示威的，禮物還沒送出，門先窄了。', needsChallenge: true },
+      { title: '先送禮。米和布比話快', setsFlags: ['champa_gift'], bonds: [{ id: 'champa', delta: 3 }, { id: 'wang', delta: 1 }], requirementText: '花 20 銀', cost: { silver: 20 }, effects: { trust: 0, morale: 5, connections: 1 }, successText: '布匹上岸，淡水上船。這座港願意做我們的第一個朋友。', autoSuccess: true },
+      { title: '請他們來看曆書和禮器', setsFlags: ['champa_letters'], bonds: [{ id: 'champa', delta: 2 }, { id: 'ma', delta: 2 }], requirement: { stat: 'knowledge', value: 3 }, requirementText: '學識要夠 3', effects: { trust: 5, morale: 5, knowledge: 1 }, successText: '你沒有先談刀。對方的譯員開始問問題，這比沉默好。', autoSuccess: true },
+    ],
   },
   {
-      stage: 3, locationId: 'palembang', icon: '🏴‍☠️', title: '舊港・海盜陳祖義',
-      description: '海盜王陳祖義盤據於此，假意歸降，實則暗藏殺機。',
-      choices: [
-          { title: '【武力】全力進攻', requirementText: '耗銀30', cost: { silver: 30 }, effects: { trust: 15, morale: -15 }, failEffects: { trust: -20, morale: -30 }, successText: '生擒陳祖義，威震南洋！', failText: '損失慘重，皇帝震怒。', needsChallenge: true },
-          { title: '【外交】談判招安', requirement: { stat: 'connections', value: 5 }, requirementText: '需人脈≥5', effects: { trust: 5, morale: 5, connections: 1 }, failEffects: { trust: -15, morale: -10 }, successText: '分化了海盜勢力。', failText: '談判破裂，使者被扣。', needsChallenge: true },
-          { title: '【智取】識破詐降', requirement: { stat: 'knowledge', value: 5 }, requirementText: '需學識≥5', effects: { trust: 20, morale: 5 }, failEffects: { trust: -10, morale: -15 }, successText: '將計就計，一舉殲滅！', failText: '計劃有漏，未能全殲。', needsChallenge: true },
-          { title: '【防禦】嚴加戒備', effects: { trust: -5, morale: -5 }, successText: '雖然保全了艦隊，但未能剿滅海盜，留有後患。', autoSuccess: true }
-      ]
+    stage: 3,
+    locationId: 'palembang',
+    icon: '🏴‍☠️',
+    title: '舊港・陳祖義說他投降',
+    description: '河口的木屋裡擺了酒。陳祖義笑得很滿，說願意歸附。岸邊的小船卻比昨天多了一倍。老舵工低聲說：這笑，不對勁。',
+    choices: [
+      { title: '不必陪他笑，整隊打出去', setsFlags: ['pirate_fought'], setsFlagsOnFail: ['pirate_brawl'], bonds: [{ id: 'wang', delta: -1 }], bondsOnFail: [{ id: 'wang', delta: -2 }], requirementText: '花 30 銀', cost: { silver: 30 }, effects: { trust: 15, morale: -15 }, failEffects: { trust: -20, morale: -30 }, successText: '陳祖義上了囚船。海峽清了，甲板上卻有好些空位。', failText: '打成了消耗。皇上要的是海盜的頭，不是一份傷亡名單。', needsChallenge: true },
+      { title: '派人進去談，把他們拆開', setsFlags: ['pirate_talked'], setsFlagsOnFail: ['pirate_talk_fail'], bonds: [{ id: 'shi', delta: 2 }], bondsOnFail: [{ id: 'shi', delta: -2 }], requirement: { stat: 'connections', value: 5 }, requirementText: '人脈要夠 5', effects: { trust: 5, morale: 5, connections: 1 }, failEffects: { trust: -15, morale: -10 }, successText: '有幾條船願意離開他。沒有一網打盡，但河安靜了些。', failText: '使者被扣下。談判變成了另一場麻煩。', needsChallenge: true },
+      { title: '假裝收下投降，夜裡反咬', setsFlags: ['pirate_trap'], setsFlagsOnFail: ['pirate_trap_fail'], bonds: [{ id: 'wang', delta: 3 }, { id: 'shi', delta: 1 }], bondsOnFail: [{ id: 'wang', delta: -2 }], requirement: { stat: 'knowledge', value: 5 }, requirementText: '學識要夠 5', effects: { trust: 20, morale: 5 }, failEffects: { trust: -10, morale: -15 }, successText: '他按自己的計謀來，你按他的計謀等。天明時，詐降的人自己進了網。', failText: '網漏了一角。人跑了些，仗卻還沒完。', needsChallenge: true },
+      { title: '只把自家的船守緊，不追', setsFlags: ['pirate_ignored'], bonds: [{ id: 'wang', delta: -2 }, { id: 'shi', delta: -1 }], effects: { trust: -5, morale: -5 }, successText: '船還在，人還在。可陳祖義也還在。下一支商船不會感謝你。', autoSuccess: true },
+    ],
   },
-  { stage: 4, locationId: 'malacca', icon: '🏝️', title: '滿剌加・建立官廠', description: '抵達戰略要地滿剌加，暹羅在側虎視眈眈。', choices: [{ title: '冊封國王', effects: { trust: 10, morale: 5 }, successText: '兩國正式建交。', autoSuccess: true }, { title: '建立官廠', requirementText: '耗銀40', cost: { silver: 40 }, effects: { trust: 10, morale: 10, connections: 1 }, successText: '建立穩固補給基地。', autoSuccess: true }, { title: '調解紛爭', requirement: { stat: 'connections', value: 4 }, requirementText: '需人脈≥4', effects: { trust: 15, morale: 10, connections: 1 }, failEffects: { trust: -5, morale: -5 }, successText: '展現大國調停能力。', needsChallenge: true }] },
-  { stage: 5, locationId: 'semudera', icon: '🌋', title: '蘇門答臘・火山', description: '火山噴發，遮天蔽日，漁民驚慌逃難。', choices: [{ title: '緊急撤離', effects: { trust: -5, morale: 5 }, successText: '安全第一，全員撤離，但錯失考察機會。', autoSuccess: true }, { title: '救助災民', requirementText: '耗銀25', cost: { silver: 25 }, effects: { trust: 5, morale: 10 }, successText: '仁義之師，贏得民心。', autoSuccess: true }, { title: '科學觀察', requirement: { stat: 'knowledge', value: 4 }, requirementText: '需學識≥4', effects: { trust: 5, knowledge: 2 }, successText: '留下珍貴紀錄。', autoSuccess: true }] },
-  { stage: 6, locationId: 'ceylon', icon: '💎', title: '錫蘭・佛牙寺', description: '國王亞烈苦奈兒設伏，意圖劫持艦隊。', choices: [{ title: '突襲王宮', requirement: { stat: 'knowledge', value: 5 }, requirementText: '需學識≥5', effects: { trust: 25, morale: -5 }, failEffects: { trust: -20, morale: -20 }, successText: '識破詭計，生擒國王！', needsChallenge: true }, { title: '婉拒入宮', effects: { trust: 0, morale: 5 }, successText: '謹慎行事，避開陷阱。', autoSuccess: true }, { title: '參拜佛牙', requirement: { stat: 'connections', value: 5 }, requirementText: '需人脈≥5|耗銀30', cost: {silver:30}, effects: { trust: 10, connections:1 }, successText: '爭取了當地民心。', needsChallenge: true }] },
-  { stage: 7, locationId: 'indianocean', icon: '🌅', title: '印度洋・無風帶', description: '海面平靜如鏡，帆船無法動彈，淡水告急。', choices: [{ title: '嚴格配給', effects: { trust: 0, morale: -20 }, successText: '艱難度過危機，船員怨聲載道。', autoSuccess: true }, { title: '祭祀祈風', requirementText: '耗銀25', cost: { silver: 25 }, effects: { trust: 0, morale: 15 }, successText: '海神庇佑，風起帆揚！', autoSuccess: true }, { title: '科學應對', requirement: { stat: 'knowledge', value: 5 }, requirementText: '需學識≥5', effects: { trust: 10, knowledge: 1 }, successText: '利用洋流推進，展現智慧。', needsChallenge: true }] },
-  { 
-      stage: 8, locationId: 'calicut', icon: '🕌', title: '古里・香料貿易', description: '抵達西洋貿易中心，各國商賈雲集。', 
-      choices: [
-          { title: '簽訂協定', requirementText: '耗銀50', cost: { silver: 50 }, effects: { trust: 15, silver: 30 }, successText: '貿易獲利豐厚。', autoSuccess: true }, 
-          { title: '安撫商人', requirement: { stat: 'connections', value: 5 }, requirementText: '需人脈≥5', effects: { trust: 5, connections: 1 }, failEffects: { trust: -5, morale: -10 }, successText: '化解了商業敵意。', needsChallenge: true },
-          { title: '文化考察', requirement: { stat: 'knowledge', value: 4 }, requirementText: '需學識≥4', effects: { trust: 5, knowledge: 2 }, successText: '豐富了對西洋的認知。', autoSuccess: true },
-          { title: '【僅作補給】', effects: { trust: -5 }, successText: '完成了基本補給，空手而歸。', autoSuccess: true }
-      ] 
+  {
+    stage: 4,
+    locationId: 'malacca',
+    icon: '🏝️',
+    title: '滿剌加・海峽要有一個倉',
+    description: '暹羅的影子在北面。滿剌加的國王看着你的船，也看着自己空空的岸。他需要一個朋友，你需要一個能把米放下的地方。',
+    choices: [
+      { title: '宣讀冊封，先把名分說清楚', setsFlags: ['malacca_edict'], bonds: [{ id: 'malacca', delta: 2 }], effects: { trust: 10, morale: 5 }, successText: '詔書一展開，這座港和南京就有了正式的稱呼。倉可以慢慢蓋。', autoSuccess: true },
+      { title: '出錢把官廠立起來', setsFlags: ['malacca_depot'], bonds: [{ id: 'malacca', delta: 3 }, { id: 'wang', delta: 2 }], requirementText: '花 40 銀', cost: { silver: 40 }, effects: { trust: 10, morale: 10, connections: 1 }, successText: '木柵和倉廒立好了。這是跟當地君主商量過的倉庫，船可以在這裡候西南風，不是把滿剌加佔下來。', autoSuccess: true },
+      { title: '替他們跟暹羅說一項和', setsFlags: ['malacca_peace'], setsFlagsOnFail: ['malacca_peace_fail'], bonds: [{ id: 'malacca', delta: 3 }], bondsOnFail: [{ id: 'malacca', delta: -2 }], requirement: { stat: 'connections', value: 4 }, requirementText: '人脈要夠 4', effects: { trust: 15, morale: 10, connections: 1 }, failEffects: { trust: -5, morale: -5 }, successText: '兩邊都退了半步。大明在這裡像個調人，不像個客人。', failText: '話沒有說攏。官廠還是要蓋，只是蓋的時候得看着北面。', needsChallenge: true },
+    ],
   },
-  { stage: 9, locationId: 'hormuz', icon: '🏺', title: '忽魯謨斯・疫病', description: '港口爆發疫病，人心惶惶。', choices: [{ title: '隔離防疫', effects: { trust: -5, morale: -10 }, successText: '全艦無人感染，但錯失外交機會。', autoSuccess: true }, { title: '醫術救援', requirement: { stat: 'knowledge', value: 6 }, requirementText: '需學識≥6|耗銀30', cost: { silver: 30 }, effects: { trust: 20, morale: 10 }, failEffects: { trust: -15, morale: -20 }, successText: '妙手回春，大明醫術揚名海外。', needsChallenge: true }, { title: '快速補給', requirementText: '耗銀20', cost: { silver: 20 }, effects: { trust: 0, morale: 5 }, successText: '盡快離開了疫區。', autoSuccess: true }] },
-  { 
-      stage: 10, locationId: 'bengal', icon: '🦒', title: '榜葛剌・麒麟', description: '國王進貢神獸。長頸、斑紋...這真的是麒麟嗎？', 
-      choices: [
-          { title: '學識鑑定', requirement: { stat: 'knowledge', value: 5 }, requirementText: '需學識≥5', effects: { trust: 20, morale: 15, qilin: true }, failEffects: { trust: -20, morale: -5 }, successText: '確認為祥瑞麒麟！', failText: '無法確認，錯失良機，皇帝大失所望。', needsChallenge: true, isQilinEvent: true }, 
-          { title: '接受進貢', requirement: { stat: 'connections', value: 5 }, requirementText: '需人脈≥5', effects: { trust: 10, morale: 10 }, successText: '帶回珍禽異獸，皇帝還算滿意。', autoSuccess: true },
-          { title: '【謹慎行事】只接受貢品', effects: { trust: -5, morale: 5 }, successText: '穩妥起見，不帶回未知動物，錯失祥瑞。', autoSuccess: true }
-      ] 
-  }
+  {
+    stage: 5,
+    locationId: 'semudera',
+    icon: '🌋',
+    title: '蘇門答剌・山自己先響了',
+    description: '胡椒園上方的山吐出一股黑煙，天暗了。岸上的人拖着孩子往船上跑，你的水手也在看你的眼睛。',
+    choices: [
+      { title: '先把人撤到外海', setsFlags: ['ash_retreat'], bonds: [{ id: 'wang', delta: 1 }], effects: { trust: -5, morale: 5 }, successText: '船退出了灰雨。人安全，考察的機會也一起退走了。', autoSuccess: true },
+      { title: '放下乾糧和布，先救岸上的人', setsFlags: ['ash_aid'], bonds: [{ id: 'semu', delta: 3 }, { id: 'wang', delta: 2 }], requirementText: '花 25 銀', cost: { silver: 25 }, effects: { trust: 5, morale: 10 }, successText: '灰還在下，可岸上的人記住了這支船沒有只顧自己。', autoSuccess: true },
+      { title: '留一隊人把噴發記下來', setsFlags: ['ash_notes'], bonds: [{ id: 'ma', delta: 2 }, { id: 'fei', delta: 1 }], requirement: { stat: 'knowledge', value: 4 }, requirementText: '學識要夠 4', effects: { trust: 5, knowledge: 2 }, successText: '風向、灰的厚度、哪一天太陽不見，都寫進了簿子。這是給後來的船看的。', autoSuccess: true },
+    ],
+  },
+  {
+    stage: 6,
+    locationId: 'ceylon',
+    icon: '💎',
+    title: '錫蘭・城門開得太客氣',
+    description: '國王亞烈苦奈兒請你入城赴宴。禮數周到得過分。岸邊有人低聲說：城裡在磨刀，海邊有人盯着我們的貨。',
+    choices: [
+      { title: '不進城，反過去取王城', setsFlags: ['ceylon_strike'], setsFlagsOnFail: ['ceylon_muddle'], bonds: [{ id: 'wang', delta: 1 }], bondsOnFail: [{ id: 'wang', delta: -2 }], requirement: { stat: 'knowledge', value: 5 }, requirementText: '學識要夠 5', effects: { trust: 25, morale: -5 }, failEffects: { trust: -20, morale: -20 }, successText: '伏兵撲了空。你已經在王城裡了。國王上了船，南京會有一份很硬的奏章。', failText: '兩邊同時動手，船亂了。這一仗沒有贏家。', needsChallenge: true },
+      { title: '稱病，禮不到城裡去', setsFlags: ['ceylon_caution'], bonds: [{ id: 'wang', delta: 2 }], effects: { trust: 0, morale: 5 }, successText: '宴你沒赴。刀也沒有砍到你身上。謹慎保住了船，故事卻短了一截。', autoSuccess: true },
+      { title: '帶薄禮去佛寺，不進王宮', setsFlags: ['ceylon_temple'], setsFlagsOnFail: ['ceylon_temple_fail'], bonds: [{ id: 'monk', delta: 3 }], bondsOnFail: [{ id: 'monk', delta: -1 }], requirement: { stat: 'connections', value: 5 }, requirementText: '人脈要夠 5，還要花 30 銀', cost: { silver: 30 }, effects: { trust: 10, connections: 1 }, successText: '寺裡的人收下了香和布。王宮的計謀還在，岸上卻有人願意告訴你路。', needsChallenge: true },
+    ],
+  },
+  {
+    stage: 7,
+    locationId: 'indianocean',
+    icon: '🌅',
+    title: '印度洋・帆垂着，水也少了',
+    description: '海平得像一塊銅。帆不吃風，水桶一天比一天輕。有人開始算：照這樣，我們會先渴死，還是先被皇上忘了。',
+    choices: [
+      { title: '定量。每人就這麼多', setsFlags: ['ocean_ration'], bonds: [{ id: 'wang', delta: -2 }], effects: { trust: 0, morale: -20 }, successText: '人沒有渴死。可甲板上的話變少了，剩下的多是怨。', autoSuccess: true },
+      { title: '設席祭天妃，也讓大家睡一個整覺', setsFlags: ['ocean_rite'], bonds: [{ id: 'wang', delta: 3 }, { id: 'fei', delta: 1 }], requirementText: '花 25 銀', cost: { silver: 25 }, effects: { trust: 0, morale: 15 }, successText: '風不是神吹來的，但人肯再等一等。第二天帆面終於鼓了一點。', autoSuccess: true },
+      { title: '看星，也看水往哪一邊流', setsFlags: ['ocean_stars'], setsFlagsOnFail: ['ocean_stars_fail'], bonds: [{ id: 'fei', delta: 2 }, { id: 'wang', delta: 1 }], bondsOnFail: [{ id: 'fei', delta: -1 }], requirement: { stat: 'knowledge', value: 5 }, requirementText: '學識要夠 5', effects: { trust: 10, knowledge: 1 }, successText: '洋流比風誠實。船慢慢挪出了這片死水，簿子上多了一條以後用得着的線。', needsChallenge: true },
+    ],
+  },
+  {
+    stage: 8,
+    locationId: 'calicut',
+    icon: '🕌',
+    title: '古里・胡椒比話還多',
+    description: '碼頭上什麼語言都有。胡椒麻袋堆得比人高。商人看你的船，像看一筆還沒談妥的帳。',
+    choices: [
+      { title: '把契約寫下來，貨換貨', setsFlags: ['calicut_deal'], bonds: [{ id: 'calicut', delta: 2 }], requirementText: '花 50 銀', cost: { silver: 50 }, effects: { trust: 15, silver: 30 }, successText: '胡椒上船，布匹上岸。帳是平的，皇上也聽得懂這種平。', autoSuccess: true },
+      { title: '先去平一場商人的口角', setsFlags: ['calicut_peace'], setsFlagsOnFail: ['calicut_muddle'], bonds: [{ id: 'calicut', delta: 2 }], bondsOnFail: [{ id: 'calicut', delta: -2 }], requirement: { stat: 'connections', value: 5 }, requirementText: '人脈要夠 5', effects: { trust: 5, connections: 1 }, failEffects: { trust: -5, morale: -10 }, successText: '架沒有打起來。市集願意繼續跟大明的船說話。', failText: '你站到了中間，兩邊都不領情。貨還在，臉丟了一點。', needsChallenge: true },
+      { title: '少談價，多問他們的曆法和港路', setsFlags: ['calicut_learn'], bonds: [{ id: 'ma', delta: 3 }, { id: 'calicut', delta: 1 }], requirement: { stat: 'knowledge', value: 4 }, requirementText: '學識要夠 4', effects: { trust: 5, knowledge: 2 }, successText: '你帶走的不只是胡椒，還有這座城自己講的故事。馬歡會喜歡這樣的筆記。', autoSuccess: true },
+      { title: '只加水、添米，不做買賣', setsFlags: ['calicut_skip'], bonds: [{ id: 'calicut', delta: -1 }, { id: 'ma', delta: -1 }], effects: { trust: -5 }, successText: '船能走。可古里這麼大的市，你幾乎空手而回。南京會問你一句很短的話。', autoSuccess: true },
+    ],
+  },
+  {
+    stage: 9,
+    locationId: 'hormuz',
+    icon: '🏺',
+    title: '忽魯謨斯・城裡在發燒',
+    description: '熱風裡夾着另一種熱。港口的人病了，不敢靠近。你的醫官看着你，水手看着水桶。多停一天，就多一分被染上的可能。',
+    choices: [
+      { title: '船與城隔開，誰也不上誰的岸', setsFlags: ['hormuz_shut'], bonds: [{ id: 'hormuz', delta: -2 }, { id: 'wang', delta: 1 }], effects: { trust: -5, morale: -10 }, successText: '船上沒有新的病人。這座城的地毯和國書，你也沒有帶上。', autoSuccess: true },
+      { title: '讓醫官上岸，試着把人穩住', setsFlags: ['hormuz_heal'], setsFlagsOnFail: ['hormuz_sick'], bonds: [{ id: 'hormuz', delta: 4 }, { id: 'wang', delta: 2 }], bondsOnFail: [{ id: 'wang', delta: -3 }, { id: 'hormuz', delta: -4 }], requirement: { stat: 'knowledge', value: 6 }, requirementText: '學識要夠 6，還要花 30 銀', cost: { silver: 30 }, effects: { trust: 20, morale: 10 }, failEffects: { trust: -15, morale: -20 }, successText: '藥和乾淨的水比金杯子有用。城裡的人開始把大明的船叫做肯回來的船。', failText: '病沒有聽你的。船上也有人倒下。這一注下重了。', needsChallenge: true },
+      { title: '買足水，趁夜離開', setsFlags: ['hormuz_flee'], bonds: [{ id: 'hormuz', delta: -1 }], requirementText: '花 20 銀', cost: { silver: 20 }, effects: { trust: 0, morale: 5 }, successText: '水滿了，帆也滿了。疫城留在後面。外交留在了後面。', autoSuccess: true },
+    ],
+  },
+  {
+    stage: 10,
+    locationId: 'mogadishu',
+    icon: '🐪',
+    title: '木骨都束・珊瑚石上的城',
+    description: '分艙的船繞過大洋，看見一座用珊瑚石砌成的城。市上有龍涎香，有象牙，還有人不太相信你真的從那麼遠的東邊來。國王站在風裡，等你先開口。',
+    choices: [
+      { title: '以絲瓷換香，互相見個禮', setsFlags: ['moga_trade'], bonds: [{ id: 'mogadishu', delta: 3 }], requirementText: '花 25 銀', cost: { silver: 25 }, effects: { trust: 10, morale: 5, connections: 1 }, successText: '禮物換了禮物。龍涎香進了艙，這座城也肯把名字寫進你的簿子。', autoSuccess: true },
+      { title: '上岸，把城和南邊的星一起記下來', setsFlags: ['moga_survey'], bonds: [{ id: 'ma', delta: 2 }, { id: 'mogadishu', delta: 1 }], requirement: { stat: 'knowledge', value: 4 }, requirementText: '學識要夠 4', effects: { trust: 8, knowledge: 2, morale: 5 }, successText: '石城、市集、夜裡那幾顆低低的星，都留下了。以後的船可以沿着你的句子來。', autoSuccess: true },
+      { title: '只補水，不多留', setsFlags: ['moga_rush'], bonds: [{ id: 'mogadishu', delta: -2 }], effects: { trust: -5, morale: -5 }, successText: '船安全。可人已經到了非洲東岸，你幾乎沒有把這裡的故事帶回去。皇上會覺得這一段白走。', autoSuccess: true },
+    ],
+  },
+  {
+    stage: 11,
+    locationId: 'bengal',
+    icon: '🦒',
+    title: '榜葛剌・牠的脖子比故事還長',
+    description: '這不是永樂三年的事。永樂十二年（1414），第四次下西洋前後，榜葛剌要把一頭長頸鹿送去北京。牠來自東非的海商網路，不是首航在占城牽到的。通事問你：朝裡會不會叫牠麒麟？',
+    choices: [
+      { title: '對着圖和見聞，把牠認清楚', setsFlags: ['qilin_named'], setsFlagsOnFail: ['qilin_miss'], bonds: [{ id: 'bengal', delta: 3 }, { id: 'ma', delta: 3 }, { id: 'wang', delta: 3 }], bondsOnFail: [{ id: 'wang', delta: -1 }], requirement: { stat: 'knowledge', value: 5 }, requirementText: '學識要夠 5', effects: { trust: 20, morale: 15, qilin: true }, failEffects: { trust: -20, morale: -5 }, successText: '你沒有把牠說成神話，也沒有把牠說成怪物。南京願意稱牠麒麟。祥瑞這一次是你帶回去的。', failText: '你猶豫太久。動物還在，名字沒有定。皇上等的那句話，你沒有送上。', needsChallenge: true, isQilinEvent: true },
+      { title: '按朝貢的禮收下，不多解釋', setsFlags: ['qilin_tribute'], bonds: [{ id: 'bengal', delta: 1 }], requirement: { stat: 'connections', value: 5 }, requirementText: '人脈要夠 5', effects: { trust: 10, morale: 10 }, successText: '禮數到了。珍禽異獸進了名單，皇上不算失望，也還沒有聽見那聲「麒麟」。', autoSuccess: true },
+      { title: '只收香料和布，動物留下', setsFlags: ['qilin_left'], bonds: [{ id: 'bengal', delta: -1 }, { id: 'wang', delta: -1 }], effects: { trust: -5, morale: 5 }, successText: '穩。沒有人被不認識的蹄子踢到。可這趟最會說故事的禮物，你讓它留在了岸上。', autoSuccess: true },
+    ],
+  },
 ];

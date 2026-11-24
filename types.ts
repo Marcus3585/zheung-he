@@ -5,7 +5,11 @@ export interface Location {
   lat: number;
   lng: number;
   description: string;
+  /** Local historical note. Shown at once; never fetched from a network. */
+  blurb: string;
   tradeGoods: string[];
+  image: string;
+  imageAlt: string;
 }
 
 export interface Route {
@@ -32,6 +36,15 @@ export interface GameStats {
   silver: number;
   hasQilin: boolean;
   timeRemaining: number;
+  /** Story flags. Later dialogue reads these. */
+  flags: string[];
+  /** 0–100 feeling toward a character id. */
+  bonds: Record<string, number>;
+}
+
+export interface BondShift {
+  id: string;
+  delta: number;
 }
 
 export interface ChoiceRequirement {
@@ -64,6 +77,11 @@ export interface GameChoice {
   autoSuccess?: boolean;
   needsChallenge?: boolean;
   isQilinEvent?: boolean;
+  /** Remembered when the choice succeeds, so later talks can change. */
+  setsFlags?: string[];
+  setsFlagsOnFail?: string[];
+  bonds?: BondShift[];
+  bondsOnFail?: BondShift[];
 }
 
 export interface GameEvent {

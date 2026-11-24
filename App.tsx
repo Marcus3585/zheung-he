@@ -1,12 +1,30 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import GlobeViz from './components/GlobeViz';
 import InfoPanel from './components/InfoPanel';
 import ChatInterface from './components/ChatInterface';
 import AssessmentPanel from './components/AssessmentPanel';
 import RegistrationPanel from './components/RegistrationPanel';
-import { LOCATIONS, ROUTES, GAME_EVENTS, HISTORY_MILESTONES, QUIZ_QUESTIONS } from './constants';
-import { GameStats, GameEvent, GameChoice, QuizQuestion, StudentProfile } from './types';
-import { Clock, AlertTriangle, Skull, Minimize2, Maximize2, BookOpen, Anchor, ChevronLeft, ChevronRight, Home, GraduationCap } from 'lucide-react';
+import ErrorBoundary from './components/ErrorBoundary';
+import HistoricImage from './components/HistoricImage';
+import DialoguePanel from './components/DialoguePanel';
+import { ILLUSTRATIONS, LOCATIONS, ROUTES, GAME_EVENTS, HISTORY_MILESTONES, QUIZ_QUESTIONS } from './constants';
+import { CHARACTERS, INITIAL_BONDS } from './data/characters';
+import { CRISIS_TALK, EPILOGUE, TALK_SCENES } from './data/voyageTalk';
+import { GameStats, GameEvent, GameChoice, QuizQuestion, StudentProfile, ChoiceEffects } from './types';
+import {
+  applyTalkToStats,
+  attitudeLabel,
+  bondOf,
+  findScene,
+  mergeEffects,
+  resolveChoices,
+  resolveCrisis,
+  resolveText,
+  sideEffects,
+  TalkChoice,
+  TalkScene,
+} from './services/talk';
+import { Clock, AlertTriangle, Skull, BookOpen, Anchor, ChevronLeft, ChevronRight, Home, GraduationCap } from 'lucide-react';
 
 const INITIAL_STATS: GameStats = {
   trust: 50,
@@ -15,10 +33,23 @@ const INITIAL_STATS: GameStats = {
   connections: 0,
   silver: 50,
   hasQilin: false,
-  timeRemaining: 1800 // 30 mins
+  timeRemaining: 1800, // 30 mins
+  flags: [],
+  bonds: { ...INITIAL_BONDS },
 };
 
-type GamePhase = 'registration' | 'intro' | 'quiz' | 'playing' | 'challenge' | 'result' | 'gameover' | 'victory' | 'history' | 'assessment';
+function freshStats(over: Partial<GameStats> = {}): GameStats {
+  return {
+    ...INITIAL_STATS,
+    ...over,
+    flags: [],
+    bonds: { ...INITIAL_BONDS },
+    timeRemaining: over.timeRemaining ?? INITIAL_STATS.timeRemaining,
+  };
+}
+
+type GamePhase = 'registration' | 'intro' | 'quiz' | 'playing' | 'dialogue' | 'challenge' | 'result' | 'gameover' | 'victory' | 'history' | 'assessment';
+type TalkStep = 'arrival' | 'local' | 'crisis' | 'aftermath' | 'epilogue';
 
 // Common wrapper class for modals to ensure consistent styling
 const ModalWrapper = ({ children }: { children?: React.ReactNode }) => (
@@ -38,7 +69,9 @@ const PaperCard = ({ children, className = "" }: { children?: React.ReactNode, c
 const App: React.FC = () => {
   // Game State
   const [phase, setPhase] = useState<GamePhase>('registration');
-  const [stats, setStats] = useState<GameStats>(INITIAL_STATS);
+  const [stats, setStats] = useState<GameStats>(() => freshStats());
+  const statsRef = useRef(stats);
+  statsRef.current = stats;
   const [currentEventIndex, setCurrentEventIndex] = useState(0);
   const [currentEvent, setCurrentEvent] = useState<GameEvent | null>(null);
   
@@ -49,6 +82,11 @@ const App: React.FC = () => {
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(0);
   
   const [isUiMinimized, setIsUiMinimized] = useState(false);
+  const [talkStep, setTalkStep] = useState<TalkStep>('arrival');
+  const [nodeId, setNodeId] = useState('');
+  const [talkChanges, setTalkChanges] = useState<string[]>([]);
+  const [showBlurb, setShowBlurb] = useState(false);
+  const [showHistoryBlurb, setShowHistoryBlurb] = useState(false);
   
   // Quiz State
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
@@ -69,7 +107,7 @@ const App: React.FC = () => {
         setStats(prev => {
           if (prev.timeRemaining <= 1) {
              setPhase('gameover');
-             setResultMessage({success: false, text: "時間耗盡，艦隊未能按時返航。", changes: []});
+             setResultMessage({success: false, text: "時辰用盡了。船還沒有回到劉家港，這一趟只能記到這裡。", changes: []});
              return prev;
           }
           return { ...prev, timeRemaining: prev.timeRemaining - 1 };
@@ -84,10 +122,10 @@ const App: React.FC = () => {
     if (phase === 'playing') {
       if (stats.trust <= 0) {
         setPhase('gameover');
-        setResultMessage({success: false, text: "皇帝震怒，下令召回艦隊，將你革職查辦。", changes: []});
+        setResultMessage({success: false, text: "皇上來信召回艦隊。信任用完了，船要掉頭。", changes: []});
       } else if (stats.morale <= 0) {
         setPhase('gameover');
-        setResultMessage({success: false, text: "水手譁變，艦隊分崩離析。", changes: []});
+        setResultMessage({success: false, text: "水手不肯再聽令。船散了，這一趟走不下去。", changes: []});
       }
     }
   }, [stats, phase]);
@@ -160,41 +198,84 @@ const App: React.FC = () => {
     }
   };
 
-  const finishQuiz = () => {
-    // Calculate initial stats based on quiz
-    const baseStats = { ...INITIAL_STATS };
-    baseStats.trust = 50 + quizScore * 5;
-    baseStats.morale = 60 + quizScore * 5;
-    baseStats.silver = 80 + quizScore * 10;
-    
-    if (quizScore === 5) {
-      baseStats.knowledge = 5;
-      baseStats.connections = 5;
-    } else {
-      baseStats.knowledge = 2 + Math.floor(quizScore / 2);
-      baseStats.connections = 2 + Math.floor(quizScore / 2);
+  const collapseVoyage = (latest: GameStats) => {
+    if (latest.trust <= 0) {
+      setPhase('gameover');
+      setResultMessage({ success: false, text: '皇上來信召回艦隊。信任用完了，船要掉頭。王景弘把令旗收了。', changes: [] });
+      return true;
     }
-    
-    setStats(baseStats);
-    setPhase('playing');
-    loadEvent(0);
+    if (latest.morale <= 0) {
+      setPhase('gameover');
+      setResultMessage({ success: false, text: '水手不肯再聽令。船散了，這一趟走不下去。', changes: [] });
+      return true;
+    }
+    return false;
   };
 
-  const loadEvent = (idx: number) => {
-    if (idx >= GAME_EVENTS.length) {
-      finishGame();
+  const openStep = (index: number, step: TalkStep) => {
+    const event = GAME_EVENTS[index];
+    if (!event) {
+      setPhase('victory');
       return;
     }
-    setCurrentEventIndex(idx);
-    setCurrentEvent(GAME_EVENTS[idx]);
+    setCurrentEventIndex(index);
+    setCurrentEvent(event);
+    setTalkStep(step);
+    setTalkChanges([]);
+    setShowBlurb(false);
+    setIsUiMinimized(false);
+    if (step === 'crisis') {
+      setPhase('playing');
+      setNodeId('');
+      return;
+    }
+    const scene: TalkScene = step === 'epilogue'
+      ? EPILOGUE
+      : findScene(TALK_SCENES, event.locationId, step);
+    setPhase('dialogue');
+    setNodeId(scene.entry);
+  };
+
+  const finishTalkScene = (latest: GameStats) => {
+    if (collapseVoyage(latest)) return;
+    if (talkStep === 'arrival') openStep(currentEventIndex, 'local');
+    else if (talkStep === 'local') openStep(currentEventIndex, 'crisis');
+    else if (talkStep === 'aftermath') {
+      if (currentEventIndex >= GAME_EVENTS.length - 1) openStep(currentEventIndex, 'epilogue');
+      else openStep(currentEventIndex + 1, 'arrival');
+    } else if (talkStep === 'epilogue') setPhase('victory');
+  };
+
+  const handleTalkChoice = (choice: TalkChoice) => {
+    const { stats: next, labels } = applyTalkToStats(statsRef.current, choice.effects);
+    statsRef.current = next;
+    setStats(next);
+    setTalkChanges(labels);
+    if (choice.next) setNodeId(choice.next);
+    else finishTalkScene(next);
+  };
+
+  const finishQuiz = () => {
+    const baseStats = freshStats({
+      trust: 50 + quizScore * 5,
+      morale: 60 + quizScore * 5,
+      silver: 80 + quizScore * 10,
+      knowledge: quizScore === 5 ? 5 : 2 + Math.floor(quizScore / 2),
+      connections: quizScore === 5 ? 5 : 2 + Math.floor(quizScore / 2),
+    });
+    statsRef.current = baseStats;
+    setStats(baseStats);
+    openStep(0, 'arrival');
+  };
+
+  const requirementMet = (choice: GameChoice) => {
+    if (!choice.requirement) return true;
+    return stats[choice.requirement.stat] >= choice.requirement.value;
   };
 
   const handleChoice = (choice: GameChoice) => {
-    if (choice.cost && stats.silver < choice.cost.silver) return; // Should be disabled in UI
-
-    if (choice.cost) {
-      setStats(s => ({...s, silver: s.silver - choice.cost!.silver}));
-    }
+    if (choice.cost && stats.silver < choice.cost.silver) return;
+    if (!requirementMet(choice)) return;
 
     if (choice.needsChallenge) {
       setPendingChoice(choice);
@@ -218,7 +299,7 @@ const App: React.FC = () => {
       setActiveChallengeQuestion(QUIZ_QUESTIONS[nextIdx]);
       setPhase('challenge');
     } else {
-      applyEffects(choice.effects, choice.successText, true, choice.isQilinEvent);
+      applyEffects(choice.effects, choice.successText, true, !!choice.isQilinEvent, choice);
     }
   };
 
@@ -236,35 +317,44 @@ const App: React.FC = () => {
     setTimeout(() => {
         setQuizFeedback(null);
         if (isCorrect) {
-          applyEffects(pendingChoice.effects, pendingChoice.successText, true, pendingChoice.isQilinEvent);
+          applyEffects(pendingChoice.effects, pendingChoice.successText, true, !!pendingChoice.isQilinEvent, pendingChoice);
         } else {
-          applyEffects(pendingChoice.failEffects || {}, pendingChoice.failText || "判定失敗", false, false);
+          applyEffects(pendingChoice.failEffects || {}, pendingChoice.failText || '判定失敗', false, false, pendingChoice);
         }
     }, 2000);
   };
 
-  const applyEffects = (effects: any, text: string, success: boolean, isQilin: boolean = false) => {
-    const changes: string[] = [];
-    setStats(prev => {
-      const next = { ...prev };
-      if (effects.trust) { next.trust = Math.min(100, Math.max(0, next.trust + effects.trust)); changes.push(`信任 ${effects.trust > 0 ? '+' : ''}${effects.trust}`); }
-      if (effects.morale) { next.morale = Math.min(100, Math.max(0, next.morale + effects.morale)); changes.push(`士氣 ${effects.morale > 0 ? '+' : ''}${effects.morale}`); }
-      if (effects.knowledge) { next.knowledge += effects.knowledge; changes.push(`學識 +${effects.knowledge}`); }
-      if (effects.connections) { next.connections += effects.connections; changes.push(`人脈 +${effects.connections}`); }
-      if (effects.silver) { next.silver += effects.silver; changes.push(`銀兩 ${effects.silver > 0 ? '+' : ''}${effects.silver}`); }
-      if (success && isQilin) { next.hasQilin = true; changes.push("獲得麒麟！"); }
-      return next;
-    });
-
-    setResultMessage({ success, text, changes });
+  const applyEffects = (effects: ChoiceEffects, text: string, success: boolean, isQilin = false, choice?: GameChoice) => {
+    // One write, outside any state updater, so a silver cost cannot be
+    // overwritten by a second update and badges are not listed twice.
+    const prev = statsRef.current;
+    const addedFlags = success ? (choice?.setsFlags ?? []) : (choice?.setsFlagsOnFail ?? []);
+    const addedBonds = success ? (choice?.bonds ?? []) : (choice?.bondsOnFail ?? []);
+    const merged = mergeEffects(
+      {
+        trust: effects.trust,
+        morale: effects.morale,
+        knowledge: effects.knowledge,
+        connections: effects.connections,
+        silver: effects.silver,
+        flags: addedFlags,
+        bonds: addedBonds,
+      },
+      sideEffects(prev.flags, addedFlags),
+    );
+    const { stats: next, labels } = resolveCrisis(prev, merged, choice?.cost?.silver ?? 0, success && isQilin);
+    statsRef.current = next;
+    setStats(next);
+    setResultMessage({ success, text, changes: labels });
     setPhase('result');
   };
 
   const nextTurn = () => {
-    setPhase('playing');
     setResultMessage(null);
     setPendingChoice(null);
-    loadEvent(currentEventIndex + 1);
+    setQuizFeedback(null);
+    if (collapseVoyage(statsRef.current)) return;
+    openStep(currentEventIndex, 'aftermath');
   };
 
   const historyNext = () => {
@@ -277,10 +367,6 @@ const App: React.FC = () => {
     if (currentHistoryIndex > 0) {
       setCurrentHistoryIndex(currentHistoryIndex - 1);
     }
-  };
-
-  const finishGame = () => {
-    setPhase('victory');
   };
 
   // --- Render Helpers ---
@@ -298,19 +384,36 @@ const App: React.FC = () => {
   };
 
   const currentHistoryEvent = phase === 'history' ? HISTORY_MILESTONES[currentHistoryIndex] : null;
+  const activeLocation = LOCATIONS.find((item) => item.id === getActiveLocationId()) ?? null;
+  const talkScene: TalkScene | null = phase === 'dialogue' && currentEvent
+    ? (talkStep === 'epilogue'
+      ? EPILOGUE
+      : (talkStep === 'arrival' || talkStep === 'local' || talkStep === 'aftermath')
+        ? findScene(TALK_SCENES, currentEvent.locationId, talkStep)
+        : null)
+    : null;
+  const talkNode = talkScene?.nodes.find((node) => node.id === nodeId) ?? null;
+  const crisisScript = phase === 'playing' && currentEvent ? CRISIS_TALK[currentEvent.locationId] : undefined;
 
   return (
     <div className="relative w-full h-screen overflow-hidden font-sans">
       {/* 3D Background */}
-      <GlobeViz 
-        locations={LOCATIONS} 
-        routes={ROUTES} 
-        activeLocationId={getActiveLocationId()}
-      />
+      <ErrorBoundary inline>
+        <GlobeViz 
+          locations={LOCATIONS} 
+          routes={ROUTES} 
+          activeLocationId={getActiveLocationId()}
+          rightClearance={
+            phase === 'history' || ((phase === 'playing' || phase === 'dialogue') && !isUiMinimized)
+              ? 440
+              : 16
+          }
+        />
+      </ErrorBoundary>
 
       {/* --- HUD (Top Bar) --- */}
       {/* Only show stats during gameplay phases */}
-      {(phase === 'playing' || phase === 'result' || phase === 'challenge') && (
+      {(phase === 'playing' || phase === 'dialogue' || phase === 'result' || phase === 'challenge') && (
         <div className="absolute top-0 left-0 right-0 z-30 pointer-events-none">
           {/* Top Gradient Overlay */}
           <div className="absolute inset-0 h-32 bg-gradient-to-b from-imperial-ocean/90 to-transparent pointer-events-none" />
@@ -363,14 +466,14 @@ const App: React.FC = () => {
       {/* History Mode Top Badge */}
       {phase === 'history' && (
         <div className="absolute top-4 left-4 z-30 bg-imperial-ocean text-white px-4 py-2 rounded-full shadow-lg border border-white/20 font-serif font-bold flex items-center gap-2">
-           <BookOpen size={18} /> 史實模式：探索鄭和七下西洋足跡
+           <BookOpen size={18} /> 史實漫遊：跟着鄭和的船跡走
         </div>
       )}
 
       {/* --- Main UI Layer --- */}
       
       {/* 1. Location Info Panel - Top Right */}
-      {(phase === 'playing' || phase === 'history') && getActiveLocationId() && (
+      {isUiMinimized && (phase === 'playing' || phase === 'dialogue') && getActiveLocationId() && (
           <div className="absolute top-28 right-4 z-20 pointer-events-none flex flex-col items-end gap-2">
               <div className="pointer-events-auto">
                    <InfoPanel location={LOCATIONS.find(l => l.id === getActiveLocationId()) || null} />
@@ -378,81 +481,89 @@ const App: React.FC = () => {
           </div>
       )}
 
-      {/* 2. Event Card - Bottom Left (Gameplay Version) */}
-      {phase === 'playing' && currentEvent && (
-        <div className={`absolute left-0 bottom-0 md:left-8 md:bottom-8 z-20 flex flex-col items-start p-2 md:p-0 pointer-events-none transition-all duration-500 ${isUiMinimized ? 'translate-y-[85%]' : 'translate-y-0'}`}>
-            <PaperCard className="pointer-events-auto max-w-md w-full">
-                <div className="p-6">
-                    {/* Minimize Toggle */}
-                    <button 
-                        onClick={() => setIsUiMinimized(!isUiMinimized)}
-                        className="absolute top-2 right-2 text-imperial-ink/40 hover:text-imperial-ink p-1 hover:bg-imperial-ink/5 rounded"
-                    >
-                        {isUiMinimized ? <Maximize2 size={16} /> : <Minimize2 size={16} />}
-                    </button>
-
-                    <div className="flex items-center gap-3 mb-4 border-b border-imperial-ink/10 pb-3 pr-8">
-                        <span className="text-4xl filter drop-shadow-sm">{currentEvent.icon}</span>
-                        <div>
-                            <div className="text-xs uppercase text-imperial-red font-bold tracking-widest mb-1">第 {currentEvent.stage} 航段</div>
-                            <h2 className="text-2xl font-serif font-bold text-imperial-ink">{currentEvent.title}</h2>
-                        </div>
-                    </div>
-
-                    <div className={`transition-opacity duration-300 ${isUiMinimized ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'}`}>
-                        <p className="text-imperial-ink/80 mb-6 leading-relaxed text-base font-serif border-l-4 border-imperial-gold pl-3 bg-imperial-gold/5 py-2 rounded-r">
-                            {currentEvent.description}
-                        </p>
-
-                        <div className="grid gap-3">
-                            {currentEvent.choices.map((choice, i) => {
-                                const canAfford = !choice.cost || stats.silver >= choice.cost.silver;
-                                let reqMet = true;
-                                if (choice.requirement) {
-                                    reqMet = stats[choice.requirement.stat] >= choice.requirement.value;
-                                }
-
-                                return (
-                                    <button 
-                                        key={i}
-                                        onClick={() => handleChoice(choice)}
-                                        disabled={!canAfford}
-                                        className={`text-left p-3 rounded-lg border-2 transition-all group relative overflow-hidden ${
-                                            canAfford 
-                                            ? 'bg-white border-imperial-ink/10 hover:border-imperial-gold hover:shadow-md' 
-                                            : 'bg-gray-200 border-gray-300 opacity-60 cursor-not-allowed'
-                                        }`}
-                                    >
-                                        <div className="flex justify-between items-center relative z-10">
-                                            <span className={`font-bold text-base font-serif ${canAfford ? 'group-hover:text-imperial-red' : ''} transition-colors`}>{choice.title}</span>
-                                            <div className="text-xs flex flex-col items-end gap-0.5 font-sans">
-                                                {choice.requirementText && (
-                                                    <span className={`${reqMet ? 'text-game-morale' : 'text-imperial-red font-bold'}`}>
-                                                        {choice.requirementText}
-                                                    </span>
-                                                )}
-                                                {choice.cost && (
-                                                    <span className={`${canAfford ? 'text-imperial-gold' : 'text-imperial-red font-bold'}`}>
-                                                        耗銀 {choice.cost.silver}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-            </PaperCard>
-        </div>
+      {talkScene && talkNode && (
+        <DialoguePanel
+          kicker={talkStep === 'epilogue' ? talkScene.kicker : `第 ${currentEvent?.stage ?? ''} 段 · ${talkScene.kicker}`}
+          title={activeLocation?.nameCn ?? '船上'}
+          speaker={CHARACTERS[talkNode.speakerId] ?? CHARACTERS.wang}
+          text={resolveText(talkNode.text, talkNode.variants, stats)}
+          blurb={activeLocation?.blurb}
+          blurbOpen={showBlurb}
+          onToggleBlurb={() => setShowBlurb((open) => !open)}
+          attitude={attitudeLabel(bondOf(stats, talkNode.speakerId))}
+          changes={talkChanges}
+          minimized={isUiMinimized}
+          onToggleMinimized={() => setIsUiMinimized((value) => !value)}
+          footnote="對談的時候，沙漏先歇一歇。"
+          choices={
+            resolveChoices(talkNode, stats).length > 0
+              ? resolveChoices(talkNode, stats).map((item, index) => ({
+                  key: `${talkNode.id}-${index}`,
+                  text: item.choice.text,
+                  hint: item.hint,
+                  disabled: item.locked,
+                  onSelect: () => handleTalkChoice(item.choice),
+                }))
+              : [{
+                  key: `${talkNode.id}-continue`,
+                  text: talkNode.continueLabel ?? '我知道了',
+                  onSelect: () => {
+                    if (talkNode.next) setNodeId(talkNode.next);
+                    else finishTalkScene(statsRef.current);
+                  },
+                }]
+          }
+        />
       )}
 
-      {/* 3. History Control Card - Bottom Left (History Version) */}
+      {phase === 'playing' && currentEvent && crisisScript && (
+        <DialoguePanel
+          kicker={`第 ${currentEvent.stage} 段 · 眼前的事`}
+          title={currentEvent.title}
+          speaker={CHARACTERS[crisisScript.speakerId] ?? CHARACTERS.wang}
+          text={resolveText(crisisScript.lead, crisisScript.leadVariants, stats)}
+          narration={currentEvent.description}
+          aside={{
+            speaker: CHARACTERS[crisisScript.asideSpeakerId] ?? CHARACTERS.wang,
+            text: resolveText(crisisScript.aside, crisisScript.asideVariants, stats),
+          }}
+          blurb={activeLocation?.blurb}
+          blurbOpen={showBlurb}
+          onToggleBlurb={() => setShowBlurb((open) => !open)}
+          attitude={attitudeLabel(bondOf(stats, crisisScript.speakerId))}
+          changes={[]}
+          minimized={isUiMinimized}
+          onToggleMinimized={() => setIsUiMinimized((value) => !value)}
+          footnote="想好了再按。這一段沙漏在走。"
+          choices={currentEvent.choices.map((choice, index) => {
+            const canAfford = !choice.cost || stats.silver >= choice.cost.silver;
+            const reqMet = requirementMet(choice);
+            const enabled = canAfford && reqMet;
+            const hints = [
+              choice.requirementText,
+              choice.cost && !choice.requirementText?.includes('銀') ? `耗銀 ${choice.cost.silver}` : '',
+            ].filter(Boolean);
+            return {
+              key: `crisis-${index}`,
+              text: choice.title,
+              hint: hints.join(' · '),
+              disabled: !enabled,
+              onSelect: () => handleChoice(choice),
+            };
+          })}
+        />
+      )}
+
+      {/* History card stays on the right so the left limb of the globe — where 木骨都束 sits when the camera is on 劉家港 — stays clear. */}
       {phase === 'history' && currentHistoryEvent && (
-        <div className="absolute left-0 bottom-0 md:left-8 md:bottom-8 z-20 flex flex-col items-start p-2 md:p-0 pointer-events-auto">
-             <PaperCard className="max-w-md w-full">
+        <div className="absolute right-3 bottom-3 z-20 w-[min(24rem,calc(100%-5.5rem))] max-h-[calc(100vh-5.5rem)] overflow-y-auto pointer-events-auto">
+             <PaperCard className="w-full">
                 <div className="p-6">
+                    <HistoricImage
+                        src={LOCATIONS.find(l => l.id === currentHistoryEvent.locationId)?.image}
+                        alt={LOCATIONS.find(l => l.id === currentHistoryEvent.locationId)?.imageAlt || currentHistoryEvent.title}
+                        className="w-full h-24 object-cover rounded-lg mb-3 border border-imperial-ink/10"
+                    />
                     <div className="flex items-center gap-3 mb-4 border-b border-imperial-ink/10 pb-3">
                         <div>
                             <div className="text-xs uppercase text-imperial-ocean font-bold tracking-widest mb-1 flex items-center gap-2">
@@ -463,9 +574,23 @@ const App: React.FC = () => {
                         </div>
                     </div>
 
-                    <p className="text-imperial-ink/80 mb-6 leading-relaxed text-base font-serif border-l-4 border-imperial-ocean pl-3 bg-imperial-ocean/5 py-2 rounded-r">
+                    <p className="text-imperial-ink/80 mb-4 leading-relaxed text-base font-serif border-l-4 border-imperial-ocean pl-3 bg-imperial-ocean/5 py-2 rounded-r">
                         {currentHistoryEvent.description}
                     </p>
+                    {activeLocation?.blurb && (
+                      <div className="mb-4">
+                        <button
+                          type="button"
+                          onClick={() => setShowHistoryBlurb((open) => !open)}
+                          className="text-sm font-bold text-imperial-ocean"
+                        >
+                          {showHistoryBlurb ? '收起考證' : '這站的考證'}
+                        </button>
+                        {showHistoryBlurb && (
+                          <p className="mt-2 text-sm leading-relaxed text-imperial-ink/80">{activeLocation.blurb}</p>
+                        )}
+                      </div>
+                    )}
 
                     <div className="flex justify-between items-center mt-4">
                         <button 
@@ -511,13 +636,19 @@ const App: React.FC = () => {
         <ModalWrapper>
           <div className="max-w-2xl w-full text-center">
             <h1 className="text-6xl md:text-8xl font-serif text-imperial-gold mb-2 drop-shadow-lg" style={{textShadow: '0 4px 10px rgba(0,0,0,0.5)'}}>大明遠航</h1>
-            <h2 className="text-3xl text-imperial-parchment mb-8 font-serif tracking-widest text-shadow-sm">麒麟之誓</h2>
+            <h2 className="text-3xl text-imperial-parchment mb-6 font-serif tracking-widest text-shadow-sm">麒麟之誓</h2>
+            <HistoricImage
+              src={ILLUSTRATIONS.ship.src}
+              alt={ILLUSTRATIONS.ship.alt}
+              className="mx-auto mb-6 w-full max-w-2xl h-40 md:h-52 object-cover rounded-xl border-2 border-imperial-parchment/40 shadow-2xl"
+            />
             
             <PaperCard className="p-8 mb-8 text-left space-y-4 leading-relaxed text-lg">
-                <p>永樂三年，大明皇帝朱棣命你出使西洋。此行路途凶險，伴君如伴虎。</p>
-                <p>你將經歷<strong className="text-imperial-red">十個航段</strong>。請注意：皇帝的耐心是有限的，任何有損國威或延誤行程的決定，都可能導致信任崩塌。</p>
+                <p>永樂三年（1405年），明成祖遣正使太監鄭和統領舟師，展開首次下西洋遠航。船隊載着絲綢、瓷器與詔書揚帆出海，奉命通使西洋諸國，宣示朝廷德威並頒行賞賜，在季候風吹拂的浩瀚航道上，開啟明初官方海外交往的序幕。</p>
+                <p>遊戲裡你會走<strong className="text-imperial-red">十一個航段</strong>。頭一程是在劉家港集結，再沿岸南下候風，不是盛夏直渡南海。麒麟是後來的事。皇上的耐心有限，水手的水桶也有限。</p>
+                <p>副使王景弘會在每一站跟你說話。港口上的國王、商人、僧人和通事也有話要說。你怎樣回答，後面的人聽得見。</p>
                 <p className="text-sm text-imperial-ink/60 mt-4 border-t border-imperial-ink/10 pt-2">
-                    您可以選擇進入「啟航挑戰」來管理艦隊資源與決策，或選擇「史實漫遊」純粹探索鄭和的歷史足跡。
+                    想自己掌舵，就按「啟航挑戰」。想先沿着鄭和的腳印走一遍，就按「史實漫遊」。你不用做完美的人，船還在，路就還沒斷。
                 </p>
             </PaperCard>
 
@@ -537,10 +668,16 @@ const App: React.FC = () => {
       {phase === 'quiz' && (
         <ModalWrapper>
           <PaperCard className="max-w-xl w-full p-8">
-            <div className="flex justify-between items-center mb-6 border-b border-imperial-ink/10 pb-4">
+            <HistoricImage
+              src={ILLUSTRATIONS.quiz.src}
+              alt={ILLUSTRATIONS.quiz.alt}
+              className="w-full h-28 object-cover rounded-lg mb-4 border border-imperial-ink/10"
+            />
+            <div className="flex justify-between items-center mb-2 border-b border-imperial-ink/10 pb-4">
                 <h3 className="text-imperial-red text-2xl font-bold">航海知識測試</h3>
                 <span className="text-imperial-ink/50 font-bold">第 {currentQuizIndex + 1} / 5 題</span>
             </div>
+            <p className="text-sm text-imperial-ink/60 mb-4">出發前對一對舊事。答錯也不要緊，我講給你聽。</p>
             
             <p className="text-xl mb-8 font-serif font-bold">{quizQuestions[currentQuizIndex]?.question}</p>
             
@@ -576,7 +713,7 @@ const App: React.FC = () => {
                     <p className="font-bold mb-1 text-lg">{quizFeedback.correct ? '✅ 正確' : '❌ 錯誤'}</p>
                     <p className="">{quizFeedback.text}</p>
                     <button onClick={nextQuizQuestion} className="mt-4 w-full bg-imperial-gold text-imperial-ink font-bold py-2 rounded shadow-md hover:bg-yellow-500 transition-colors">
-                        下一題
+                        {currentQuizIndex >= quizQuestions.length - 1 ? '開始航行' : '下一題'}
                     </button>
                 </div>
             )}
@@ -646,7 +783,7 @@ const App: React.FC = () => {
                 </div>
 
                 <button onClick={nextTurn} className="bg-imperial-gold text-imperial-ink font-bold py-3 px-8 rounded-full hover:bg-yellow-500 w-full transition-transform hover:scale-105 shadow-md">
-                    繼續航行
+                    {stats.trust <= 0 || stats.morale <= 0 ? '航行到此為止' : '聽聽副使怎麼說'}
                 </button>
             </PaperCard>
         </ModalWrapper>
@@ -676,12 +813,13 @@ const App: React.FC = () => {
                              <p className="text-lg">最終信任: <span className="text-imperial-red font-bold">{stats.trust}</span></p>
                              <p className="text-lg">最終士氣: <span className="text-game-morale font-bold">{stats.morale}</span></p>
                              <p className="text-lg">麒麟祥瑞: {stats.hasQilin ? '🦒 已帶回' : '❌ 未獲得'}</p>
+                             <p className="text-lg">王景弘: <span className="font-bold">{attitudeLabel(stats.bonds.wang ?? 0)}</span></p>
                              <hr className="border-imperial-ink/20 my-4"/>
                              <p className="italic text-imperial-ink/70">
-                                {getFinalGrade() === 'S' && "最高榮耀！你帶回了麒麟，象徵國力強盛。鄭和下西洋不僅是航海壯舉，更是和平外交的典範。"}
-                                {getFinalGrade() === 'A' && "光榮歸航。雖無麒麟，但外交成果豐碩，展現了和平崛起的理念。"}
-                                {getFinalGrade() === 'B' && "平安歸來。航行雖有波折，但最終平安。海洋政策的興衰值得深思。"}
-                                {getFinalGrade() === 'C' && "勉強及格。損失不小，決策需更周全。"}
+                                {getFinalGrade() === 'S' && "麒麟真的跟船回來了。人還齊，皇上也還肯笑。這趟走得完整。"}
+                                {getFinalGrade() === 'A' && "船回來了，朋友也結下了幾個。沒有麒麟不要緊，海路是通的。"}
+                                {getFinalGrade() === 'B' && "有風浪，有耽誤，人總算都在甲板上。能這樣回來，已經不容易。"}
+                                {getFinalGrade() === 'C' && "船是靠岸了，行李卻輕。下一趟，記得在開口之前先看清水桶和星圖。"}
                              </p>
                         </div>
                     </>
