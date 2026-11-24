@@ -11,10 +11,9 @@
     "cf:preview": "npm run build && wrangler dev"
   },
   "dependencies": {
-    "@google/genai": "^1.35.0",
-    "react-dom": "^19.2.3",
     "lucide-react": "^0.562.0",
     "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "react-globe.gl": "^2.37.0",
     "three": "0.187.0"
   },

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Mic, MicOff, Send, CheckCircle2, Award, Loader2, Upload, Check, AlertCircle, RefreshCw } from 'lucide-react';
-import { gradeStudentReflection } from '../services/gemini';
+import { gradeStudentReflection } from '../services/localGrade';
 import { AssessmentResult, StudentProfile } from '../types';
 
 interface AssessmentPanelProps {

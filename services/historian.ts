@@ -352,7 +352,7 @@ export function gradeLocally(summary: string, reflection: string): {
   const folded1 = fold(q1);
   const folded2 = fold(q2);
 
-  const eventWords = ['風暴', '牽星', '占城', '陳祖義', '舊港', '滿剌加', '官廠', '蘇門', '錫蘭', '古里', '忽魯謨斯', '麒麟', '長頸鹿', '木骨都束', '非洲', '信任', '士氣', '銀', '決策', '海盜', '榜葛剌'];
+  const eventWords = ['風暴', '牽星', '占城', '陳祖義', '舊港', '滿剌加', '官廠', '蘇門', '錫蘭', '古里', '忽魯謨斯', '麒麟', '長頸鹿', '木骨都束', '非洲', '信任', '士氣', '銀', '決策', '海盜', '榜葛剌', '王景弘', '副使', '馬歡', '通事', '周聞', '施進卿', '費信'];
   const hits1 = eventWords.filter((word) => folded1.includes(fold(word))).length;
 
   let score1 = 4;

@@ -24,6 +24,7 @@ const EARTH_BUMP = '/textures/earth-topology.png';
 const GlobeViz: React.FC<GlobeVizProps> = ({ locations, routes, activeLocationId }) => {
   const globeEl = useRef<GlobeMethods | undefined>(undefined);
   const readyRef = useRef(false);
+  const labelEls = useRef<Map<string, HTMLDivElement>>(new Map());
   const [dimensions, setDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
   const [loadedModel, setLoadedModel] = useState<THREE.Group | null>(null);
 
@@ -149,13 +150,27 @@ const GlobeViz: React.FC<GlobeVizProps> = ({ locations, routes, activeLocationId
   }, [loadedModel]);
 
   const htmlElement = useCallback((d: object) => {
-    const loc = d as Partial<Location> & { selected?: boolean };
+    const loc = d as { id?: string; nameCn?: string; selected?: boolean };
+    // CSS2DRenderer pins this outer node with its own transform and clips
+    // anything that sticks out of the viewport (overflow: hidden). A zero-size
+    // anchor keeps that pin on the port; the inner label can grow rightward
+    // when the port sits on the left limb, so 「木骨都束」 is not cut in half.
+    const anchor = document.createElement('div');
+    anchor.style.width = '0';
+    anchor.style.height = '0';
+    anchor.style.overflow = 'visible';
+    anchor.style.pointerEvents = 'none';
+
     const wrap = document.createElement('div');
+    wrap.style.position = 'absolute';
+    wrap.style.left = '0';
+    wrap.style.top = '0';
     wrap.style.display = 'flex';
     wrap.style.flexDirection = 'column';
     wrap.style.alignItems = 'center';
-    wrap.style.transform = 'translate(-50%, -100%)';
+    wrap.style.transform = 'translate(-50%, -120%)';
     wrap.style.pointerEvents = 'none';
+    wrap.style.overflow = 'visible';
 
     const name = document.createElement('div');
     name.textContent = loc.nameCn ?? '';
@@ -181,8 +196,44 @@ const GlobeViz: React.FC<GlobeVizProps> = ({ locations, routes, activeLocationId
 
     wrap.appendChild(name);
     wrap.appendChild(dot);
-    return wrap;
+    anchor.appendChild(wrap);
+    if (loc.id) labelEls.current.set(loc.id, wrap);
+    return anchor;
   }, []);
+
+  useEffect(() => {
+    let frame = 0;
+    const placeLabels = () => {
+      const globe = globeEl.current;
+      if (globe && readyRef.current) {
+        const width = window.innerWidth;
+        for (const loc of locations) {
+          const wrap = labelEls.current.get(loc.id);
+          if (!wrap) continue;
+          let x = width / 2;
+          try {
+            const point = globe.getScreenCoords(loc.lat, loc.lng, 0.02);
+            if (point && Number.isFinite(point.x)) x = point.x;
+          } catch {
+            // The globe is still spinning up. Leave the label centered.
+          }
+          if (x < 170) {
+            wrap.style.transform = 'translate(0, -120%)';
+            wrap.style.alignItems = 'flex-start';
+          } else if (x > width - 220) {
+            wrap.style.transform = 'translate(-100%, -120%)';
+            wrap.style.alignItems = 'flex-end';
+          } else {
+            wrap.style.transform = 'translate(-50%, -120%)';
+            wrap.style.alignItems = 'center';
+          }
+        }
+      }
+      frame = requestAnimationFrame(placeLabels);
+    };
+    frame = requestAnimationFrame(placeLabels);
+    return () => cancelAnimationFrame(frame);
+  }, [locations]);
 
   return (
     <div className="absolute inset-0 z-0 cursor-move">

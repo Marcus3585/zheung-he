@@ -265,9 +265,9 @@ export const GAME_EVENTS: GameEvent[] = [
     title: '啟航・先去長樂候風',
     description: '永樂三年夏秋，船在太倉劉家港集結。老水手說：不要這就橫渡南海。沿着海岸南下福建長樂太平港，等冬天的東北季候風，再由五虎門放洋。眼前沿岸先起了一團雲。',
     choices: [
-      { title: '繞開。晚一點到，總好過翻船', effects: { trust: -10, morale: 5 }, successText: '船是穩的，人鬆了口氣。只是日程慢了，南京那邊的人會開始數日子。', autoSuccess: true },
-      { title: '牽星，找一條雲縫穿過去', requirement: { stat: 'knowledge', value: 4 }, requirementText: '學識要夠 4', effects: { trust: 10, morale: 5 }, failEffects: { trust: -15, morale: -20 }, successText: '星的高度對得上。船從雲腳下溜過去，桅杆還在。', failText: '星看岔了。船板進了水，皇上的信任也漏了一截。', needsChallenge: true },
-      { title: '擂鼓，叫大家咬着牙闖', requirement: { stat: 'connections', value: 3 }, requirementText: '人脈要夠 3', effects: { trust: 15, morale: -10 }, failEffects: { trust: -5, morale: -30 }, successText: '有人肯跟你喊。船過去了，胳膊卻酸得抬不起來。', failText: '鼓響了，人沒有齊。損失比雲本身還重。', needsChallenge: true },
+      { title: '繞開。晚一點到，總好過翻船', setsFlags: ['storm_caution'], bonds: [{ id: 'wang', delta: 4 }, { id: 'zhou', delta: 3 }], effects: { trust: -10, morale: 5 }, successText: '船是穩的，人鬆了口氣。只是日程慢了，南京那邊的人會開始數日子。', autoSuccess: true },
+      { title: '牽星，找一條雲縫穿過去', setsFlags: ['storm_skill'], setsFlagsOnFail: ['storm_miss'], bonds: [{ id: 'wang', delta: 2 }, { id: 'fei', delta: 1 }], bondsOnFail: [{ id: 'wang', delta: -3 }], requirement: { stat: 'knowledge', value: 4 }, requirementText: '學識要夠 4', effects: { trust: 10, morale: 5 }, failEffects: { trust: -15, morale: -20 }, successText: '星的高度對得上。船從雲腳下溜過去，桅杆還在。', failText: '星看岔了。船板進了水，皇上的信任也漏了一截。', needsChallenge: true },
+      { title: '擂鼓，叫大家咬着牙闖', setsFlags: ['storm_force'], setsFlagsOnFail: ['storm_break'], bonds: [{ id: 'wang', delta: -3 }], bondsOnFail: [{ id: 'wang', delta: -4 }], requirement: { stat: 'connections', value: 3 }, requirementText: '人脈要夠 3', effects: { trust: 15, morale: -10 }, failEffects: { trust: -5, morale: -30 }, successText: '有人肯跟你喊。船過去了，胳膊卻酸得抬不起來。', failText: '鼓響了，人沒有齊。損失比雲本身還重。', needsChallenge: true },
     ],
   },
   {
@@ -277,9 +277,9 @@ export const GAME_EVENTS: GameEvent[] = [
     title: '占城・國王在看我們的臉',
     description: '岸上的人沒有放箭，也沒有笑。國王站在樹蔭裡，想先弄清楚這一大群船是來討東西，還是來送東西。',
     choices: [
-      { title: '把旗幟和甲士排開，讓他先看見', effects: { trust: 5, morale: 5 }, failEffects: { trust: -10, morale: -5 }, successText: '陣勢齊，國王的肩膀鬆了一點。威是有了，話還得慢慢說。', failText: '排得太滿。對方當你是來示威的，禮物還沒送出，門先窄了。', needsChallenge: true },
-      { title: '先送禮。米和布比話快', requirementText: '花 20 銀', cost: { silver: 20 }, effects: { trust: 0, morale: 5, connections: 1 }, successText: '布匹上岸，淡水上船。這座港願意做我們的第一個朋友。', autoSuccess: true },
-      { title: '請他們來看曆書和禮器', requirement: { stat: 'knowledge', value: 3 }, requirementText: '學識要夠 3', effects: { trust: 5, morale: 5, knowledge: 1 }, successText: '你沒有先談刀。對方的譯員開始問問題，這比沉默好。', autoSuccess: true },
+      { title: '把旗幟和甲士排開，讓他先看見', setsFlags: ['champa_might'], setsFlagsOnFail: ['champa_bluster'], bonds: [{ id: 'champa', delta: 1 }], bondsOnFail: [{ id: 'champa', delta: -2 }], effects: { trust: 5, morale: 5 }, failEffects: { trust: -10, morale: -5 }, successText: '陣勢齊，國王的肩膀鬆了一點。威是有了，話還得慢慢說。', failText: '排得太滿。對方當你是來示威的，禮物還沒送出，門先窄了。', needsChallenge: true },
+      { title: '先送禮。米和布比話快', setsFlags: ['champa_gift'], bonds: [{ id: 'champa', delta: 3 }, { id: 'wang', delta: 1 }], requirementText: '花 20 銀', cost: { silver: 20 }, effects: { trust: 0, morale: 5, connections: 1 }, successText: '布匹上岸，淡水上船。這座港願意做我們的第一個朋友。', autoSuccess: true },
+      { title: '請他們來看曆書和禮器', setsFlags: ['champa_letters'], bonds: [{ id: 'champa', delta: 2 }, { id: 'ma', delta: 2 }], requirement: { stat: 'knowledge', value: 3 }, requirementText: '學識要夠 3', effects: { trust: 5, morale: 5, knowledge: 1 }, successText: '你沒有先談刀。對方的譯員開始問問題，這比沉默好。', autoSuccess: true },
     ],
   },
   {
@@ -289,10 +289,10 @@ export const GAME_EVENTS: GameEvent[] = [
     title: '舊港・陳祖義說他投降',
     description: '河口的木屋裡擺了酒。陳祖義笑得很滿，說願意歸附。岸邊的小船卻比昨天多了一倍。老舵工低聲說：這笑，不對勁。',
     choices: [
-      { title: '不必陪他笑，整隊打出去', requirementText: '花 30 銀', cost: { silver: 30 }, effects: { trust: 15, morale: -15 }, failEffects: { trust: -20, morale: -30 }, successText: '陳祖義上了囚船。海峽清了，甲板上卻有好些空位。', failText: '打成了消耗。皇上要的是海盜的頭，不是一份傷亡名單。', needsChallenge: true },
-      { title: '派人進去談，把他們拆開', requirement: { stat: 'connections', value: 5 }, requirementText: '人脈要夠 5', effects: { trust: 5, morale: 5, connections: 1 }, failEffects: { trust: -15, morale: -10 }, successText: '有幾條船願意離開他。沒有一網打盡，但河安靜了些。', failText: '使者被扣下。談判變成了另一場麻煩。', needsChallenge: true },
-      { title: '假裝收下投降，夜裡反咬', requirement: { stat: 'knowledge', value: 5 }, requirementText: '學識要夠 5', effects: { trust: 20, morale: 5 }, failEffects: { trust: -10, morale: -15 }, successText: '他按自己的計謀來，你按他的計謀等。天明時，詐降的人自己進了網。', failText: '網漏了一角。人跑了些，仗卻還沒完。', needsChallenge: true },
-      { title: '只把自家的船守緊，不追', effects: { trust: -5, morale: -5 }, successText: '船還在，人還在。可陳祖義也還在。下一支商船不會感謝你。', autoSuccess: true },
+      { title: '不必陪他笑，整隊打出去', setsFlags: ['pirate_fought'], setsFlagsOnFail: ['pirate_brawl'], bonds: [{ id: 'wang', delta: -1 }], bondsOnFail: [{ id: 'wang', delta: -2 }], requirementText: '花 30 銀', cost: { silver: 30 }, effects: { trust: 15, morale: -15 }, failEffects: { trust: -20, morale: -30 }, successText: '陳祖義上了囚船。海峽清了，甲板上卻有好些空位。', failText: '打成了消耗。皇上要的是海盜的頭，不是一份傷亡名單。', needsChallenge: true },
+      { title: '派人進去談，把他們拆開', setsFlags: ['pirate_talked'], setsFlagsOnFail: ['pirate_talk_fail'], bonds: [{ id: 'shi', delta: 2 }], bondsOnFail: [{ id: 'shi', delta: -2 }], requirement: { stat: 'connections', value: 5 }, requirementText: '人脈要夠 5', effects: { trust: 5, morale: 5, connections: 1 }, failEffects: { trust: -15, morale: -10 }, successText: '有幾條船願意離開他。沒有一網打盡，但河安靜了些。', failText: '使者被扣下。談判變成了另一場麻煩。', needsChallenge: true },
+      { title: '假裝收下投降，夜裡反咬', setsFlags: ['pirate_trap'], setsFlagsOnFail: ['pirate_trap_fail'], bonds: [{ id: 'wang', delta: 3 }, { id: 'shi', delta: 1 }], bondsOnFail: [{ id: 'wang', delta: -2 }], requirement: { stat: 'knowledge', value: 5 }, requirementText: '學識要夠 5', effects: { trust: 20, morale: 5 }, failEffects: { trust: -10, morale: -15 }, successText: '他按自己的計謀來，你按他的計謀等。天明時，詐降的人自己進了網。', failText: '網漏了一角。人跑了些，仗卻還沒完。', needsChallenge: true },
+      { title: '只把自家的船守緊，不追', setsFlags: ['pirate_ignored'], bonds: [{ id: 'wang', delta: -2 }, { id: 'shi', delta: -1 }], effects: { trust: -5, morale: -5 }, successText: '船還在，人還在。可陳祖義也還在。下一支商船不會感謝你。', autoSuccess: true },
     ],
   },
   {
@@ -302,9 +302,9 @@ export const GAME_EVENTS: GameEvent[] = [
     title: '滿剌加・海峽要有一個倉',
     description: '暹羅的影子在北面。滿剌加的國王看着你的船，也看着自己空空的岸。他需要一個朋友，你需要一個能把米放下的地方。',
     choices: [
-      { title: '宣讀冊封，先把名分說清楚', effects: { trust: 10, morale: 5 }, successText: '詔書一展開，這座港和南京就有了正式的稱呼。倉可以慢慢蓋。', autoSuccess: true },
-      { title: '出錢把官廠立起來', requirementText: '花 40 銀', cost: { silver: 40 }, effects: { trust: 10, morale: 10, connections: 1 }, successText: '木柵和倉廒立好了。這是跟當地君主商量過的倉庫，船可以在這裡候西南風，不是把滿剌加佔下來。', autoSuccess: true },
-      { title: '替他們跟暹羅說一項和', requirement: { stat: 'connections', value: 4 }, requirementText: '人脈要夠 4', effects: { trust: 15, morale: 10, connections: 1 }, failEffects: { trust: -5, morale: -5 }, successText: '兩邊都退了半步。大明在這裡像個調人，不像個客人。', failText: '話沒有說攏。官廠還是要蓋，只是蓋的時候得看着北面。', needsChallenge: true },
+      { title: '宣讀冊封，先把名分說清楚', setsFlags: ['malacca_edict'], bonds: [{ id: 'malacca', delta: 2 }], effects: { trust: 10, morale: 5 }, successText: '詔書一展開，這座港和南京就有了正式的稱呼。倉可以慢慢蓋。', autoSuccess: true },
+      { title: '出錢把官廠立起來', setsFlags: ['malacca_depot'], bonds: [{ id: 'malacca', delta: 3 }, { id: 'wang', delta: 2 }], requirementText: '花 40 銀', cost: { silver: 40 }, effects: { trust: 10, morale: 10, connections: 1 }, successText: '木柵和倉廒立好了。這是跟當地君主商量過的倉庫，船可以在這裡候西南風，不是把滿剌加佔下來。', autoSuccess: true },
+      { title: '替他們跟暹羅說一項和', setsFlags: ['malacca_peace'], setsFlagsOnFail: ['malacca_peace_fail'], bonds: [{ id: 'malacca', delta: 3 }], bondsOnFail: [{ id: 'malacca', delta: -2 }], requirement: { stat: 'connections', value: 4 }, requirementText: '人脈要夠 4', effects: { trust: 15, morale: 10, connections: 1 }, failEffects: { trust: -5, morale: -5 }, successText: '兩邊都退了半步。大明在這裡像個調人，不像個客人。', failText: '話沒有說攏。官廠還是要蓋，只是蓋的時候得看着北面。', needsChallenge: true },
     ],
   },
   {
@@ -314,9 +314,9 @@ export const GAME_EVENTS: GameEvent[] = [
     title: '蘇門答剌・山自己先響了',
     description: '胡椒園上方的山吐出一股黑煙，天暗了。岸上的人拖着孩子往船上跑，你的水手也在看你的眼睛。',
     choices: [
-      { title: '先把人撤到外海', effects: { trust: -5, morale: 5 }, successText: '船退出了灰雨。人安全，考察的機會也一起退走了。', autoSuccess: true },
-      { title: '放下乾糧和布，先救岸上的人', requirementText: '花 25 銀', cost: { silver: 25 }, effects: { trust: 5, morale: 10 }, successText: '灰還在下，可岸上的人記住了這支船沒有只顧自己。', autoSuccess: true },
-      { title: '留一隊人把噴發記下來', requirement: { stat: 'knowledge', value: 4 }, requirementText: '學識要夠 4', effects: { trust: 5, knowledge: 2 }, successText: '風向、灰的厚度、哪一天太陽不見，都寫進了簿子。這是給後來的船看的。', autoSuccess: true },
+      { title: '先把人撤到外海', setsFlags: ['ash_retreat'], bonds: [{ id: 'wang', delta: 1 }], effects: { trust: -5, morale: 5 }, successText: '船退出了灰雨。人安全，考察的機會也一起退走了。', autoSuccess: true },
+      { title: '放下乾糧和布，先救岸上的人', setsFlags: ['ash_aid'], bonds: [{ id: 'semu', delta: 3 }, { id: 'wang', delta: 2 }], requirementText: '花 25 銀', cost: { silver: 25 }, effects: { trust: 5, morale: 10 }, successText: '灰還在下，可岸上的人記住了這支船沒有只顧自己。', autoSuccess: true },
+      { title: '留一隊人把噴發記下來', setsFlags: ['ash_notes'], bonds: [{ id: 'ma', delta: 2 }, { id: 'fei', delta: 1 }], requirement: { stat: 'knowledge', value: 4 }, requirementText: '學識要夠 4', effects: { trust: 5, knowledge: 2 }, successText: '風向、灰的厚度、哪一天太陽不見，都寫進了簿子。這是給後來的船看的。', autoSuccess: true },
     ],
   },
   {
@@ -326,9 +326,9 @@ export const GAME_EVENTS: GameEvent[] = [
     title: '錫蘭・城門開得太客氣',
     description: '國王亞烈苦奈兒請你入城赴宴。禮數周到得過分。岸邊有人低聲說：城裡在磨刀，海邊有人盯着我們的貨。',
     choices: [
-      { title: '不進城，反過去取王城', requirement: { stat: 'knowledge', value: 5 }, requirementText: '學識要夠 5', effects: { trust: 25, morale: -5 }, failEffects: { trust: -20, morale: -20 }, successText: '伏兵撲了空。你已經在王城裡了。國王上了船，南京會有一份很硬的奏章。', failText: '兩邊同時動手，船亂了。這一仗沒有贏家。', needsChallenge: true },
-      { title: '稱病，禮不到城裡去', effects: { trust: 0, morale: 5 }, successText: '宴你沒赴。刀也沒有砍到你身上。謹慎保住了船，故事卻短了一截。', autoSuccess: true },
-      { title: '帶薄禮去佛寺，不進王宮', requirement: { stat: 'connections', value: 5 }, requirementText: '人脈要夠 5，還要花 30 銀', cost: { silver: 30 }, effects: { trust: 10, connections: 1 }, successText: '寺裡的人收下了香和布。王宮的計謀還在，岸上卻有人願意告訴你路。', needsChallenge: true },
+      { title: '不進城，反過去取王城', setsFlags: ['ceylon_strike'], setsFlagsOnFail: ['ceylon_muddle'], bonds: [{ id: 'wang', delta: 1 }], bondsOnFail: [{ id: 'wang', delta: -2 }], requirement: { stat: 'knowledge', value: 5 }, requirementText: '學識要夠 5', effects: { trust: 25, morale: -5 }, failEffects: { trust: -20, morale: -20 }, successText: '伏兵撲了空。你已經在王城裡了。國王上了船，南京會有一份很硬的奏章。', failText: '兩邊同時動手，船亂了。這一仗沒有贏家。', needsChallenge: true },
+      { title: '稱病，禮不到城裡去', setsFlags: ['ceylon_caution'], bonds: [{ id: 'wang', delta: 2 }], effects: { trust: 0, morale: 5 }, successText: '宴你沒赴。刀也沒有砍到你身上。謹慎保住了船，故事卻短了一截。', autoSuccess: true },
+      { title: '帶薄禮去佛寺，不進王宮', setsFlags: ['ceylon_temple'], setsFlagsOnFail: ['ceylon_temple_fail'], bonds: [{ id: 'monk', delta: 3 }], bondsOnFail: [{ id: 'monk', delta: -1 }], requirement: { stat: 'connections', value: 5 }, requirementText: '人脈要夠 5，還要花 30 銀', cost: { silver: 30 }, effects: { trust: 10, connections: 1 }, successText: '寺裡的人收下了香和布。王宮的計謀還在，岸上卻有人願意告訴你路。', needsChallenge: true },
     ],
   },
   {
@@ -338,9 +338,9 @@ export const GAME_EVENTS: GameEvent[] = [
     title: '印度洋・帆垂着，水也少了',
     description: '海平得像一塊銅。帆不吃風，水桶一天比一天輕。有人開始算：照這樣，我們會先渴死，還是先被皇上忘了。',
     choices: [
-      { title: '定量。每人就這麼多', effects: { trust: 0, morale: -20 }, successText: '人沒有渴死。可甲板上的話變少了，剩下的多是怨。', autoSuccess: true },
-      { title: '設席祭天妃，也讓大家睡一個整覺', requirementText: '花 25 銀', cost: { silver: 25 }, effects: { trust: 0, morale: 15 }, successText: '風不是神吹來的，但人肯再等一等。第二天帆面終於鼓了一點。', autoSuccess: true },
-      { title: '看星，也看水往哪一邊流', requirement: { stat: 'knowledge', value: 5 }, requirementText: '學識要夠 5', effects: { trust: 10, knowledge: 1 }, successText: '洋流比風誠實。船慢慢挪出了這片死水，簿子上多了一條以後用得着的線。', needsChallenge: true },
+      { title: '定量。每人就這麼多', setsFlags: ['ocean_ration'], bonds: [{ id: 'wang', delta: -2 }], effects: { trust: 0, morale: -20 }, successText: '人沒有渴死。可甲板上的話變少了，剩下的多是怨。', autoSuccess: true },
+      { title: '設席祭天妃，也讓大家睡一個整覺', setsFlags: ['ocean_rite'], bonds: [{ id: 'wang', delta: 3 }, { id: 'fei', delta: 1 }], requirementText: '花 25 銀', cost: { silver: 25 }, effects: { trust: 0, morale: 15 }, successText: '風不是神吹來的，但人肯再等一等。第二天帆面終於鼓了一點。', autoSuccess: true },
+      { title: '看星，也看水往哪一邊流', setsFlags: ['ocean_stars'], setsFlagsOnFail: ['ocean_stars_fail'], bonds: [{ id: 'fei', delta: 2 }, { id: 'wang', delta: 1 }], bondsOnFail: [{ id: 'fei', delta: -1 }], requirement: { stat: 'knowledge', value: 5 }, requirementText: '學識要夠 5', effects: { trust: 10, knowledge: 1 }, successText: '洋流比風誠實。船慢慢挪出了這片死水，簿子上多了一條以後用得着的線。', needsChallenge: true },
     ],
   },
   {
@@ -350,10 +350,10 @@ export const GAME_EVENTS: GameEvent[] = [
     title: '古里・胡椒比話還多',
     description: '碼頭上什麼語言都有。胡椒麻袋堆得比人高。商人看你的船，像看一筆還沒談妥的帳。',
     choices: [
-      { title: '把契約寫下來，貨換貨', requirementText: '花 50 銀', cost: { silver: 50 }, effects: { trust: 15, silver: 30 }, successText: '胡椒上船，布匹上岸。帳是平的，皇上也聽得懂這種平。', autoSuccess: true },
-      { title: '先去平一場商人的口角', requirement: { stat: 'connections', value: 5 }, requirementText: '人脈要夠 5', effects: { trust: 5, connections: 1 }, failEffects: { trust: -5, morale: -10 }, successText: '架沒有打起來。市集願意繼續跟大明的船說話。', failText: '你站到了中間，兩邊都不領情。貨還在，臉丟了一點。', needsChallenge: true },
-      { title: '少談價，多問他們的曆法和港路', requirement: { stat: 'knowledge', value: 4 }, requirementText: '學識要夠 4', effects: { trust: 5, knowledge: 2 }, successText: '你帶走的不只是胡椒，還有這座城自己講的故事。馬歡會喜歡這樣的筆記。', autoSuccess: true },
-      { title: '只加水、添米，不做買賣', effects: { trust: -5 }, successText: '船能走。可古里這麼大的市，你幾乎空手而回。南京會問你一句很短的話。', autoSuccess: true },
+      { title: '把契約寫下來，貨換貨', setsFlags: ['calicut_deal'], bonds: [{ id: 'calicut', delta: 2 }], requirementText: '花 50 銀', cost: { silver: 50 }, effects: { trust: 15, silver: 30 }, successText: '胡椒上船，布匹上岸。帳是平的，皇上也聽得懂這種平。', autoSuccess: true },
+      { title: '先去平一場商人的口角', setsFlags: ['calicut_peace'], setsFlagsOnFail: ['calicut_muddle'], bonds: [{ id: 'calicut', delta: 2 }], bondsOnFail: [{ id: 'calicut', delta: -2 }], requirement: { stat: 'connections', value: 5 }, requirementText: '人脈要夠 5', effects: { trust: 5, connections: 1 }, failEffects: { trust: -5, morale: -10 }, successText: '架沒有打起來。市集願意繼續跟大明的船說話。', failText: '你站到了中間，兩邊都不領情。貨還在，臉丟了一點。', needsChallenge: true },
+      { title: '少談價，多問他們的曆法和港路', setsFlags: ['calicut_learn'], bonds: [{ id: 'ma', delta: 3 }, { id: 'calicut', delta: 1 }], requirement: { stat: 'knowledge', value: 4 }, requirementText: '學識要夠 4', effects: { trust: 5, knowledge: 2 }, successText: '你帶走的不只是胡椒，還有這座城自己講的故事。馬歡會喜歡這樣的筆記。', autoSuccess: true },
+      { title: '只加水、添米，不做買賣', setsFlags: ['calicut_skip'], bonds: [{ id: 'calicut', delta: -1 }, { id: 'ma', delta: -1 }], effects: { trust: -5 }, successText: '船能走。可古里這麼大的市，你幾乎空手而回。南京會問你一句很短的話。', autoSuccess: true },
     ],
   },
   {
@@ -363,9 +363,9 @@ export const GAME_EVENTS: GameEvent[] = [
     title: '忽魯謨斯・城裡在發燒',
     description: '熱風裡夾着另一種熱。港口的人病了，不敢靠近。你的醫官看着你，水手看着水桶。多停一天，就多一分被染上的可能。',
     choices: [
-      { title: '船與城隔開，誰也不上誰的岸', effects: { trust: -5, morale: -10 }, successText: '船上沒有新的病人。這座城的地毯和國書，你也沒有帶上。', autoSuccess: true },
-      { title: '讓醫官上岸，試着把人穩住', requirement: { stat: 'knowledge', value: 6 }, requirementText: '學識要夠 6，還要花 30 銀', cost: { silver: 30 }, effects: { trust: 20, morale: 10 }, failEffects: { trust: -15, morale: -20 }, successText: '藥和乾淨的水比金杯子有用。城裡的人開始把大明的船叫做肯回來的船。', failText: '病沒有聽你的。船上也有人倒下。這一注下重了。', needsChallenge: true },
-      { title: '買足水，趁夜離開', requirementText: '花 20 銀', cost: { silver: 20 }, effects: { trust: 0, morale: 5 }, successText: '水滿了，帆也滿了。疫城留在後面。外交留在了後面。', autoSuccess: true },
+      { title: '船與城隔開，誰也不上誰的岸', setsFlags: ['hormuz_shut'], bonds: [{ id: 'hormuz', delta: -2 }, { id: 'wang', delta: 1 }], effects: { trust: -5, morale: -10 }, successText: '船上沒有新的病人。這座城的地毯和國書，你也沒有帶上。', autoSuccess: true },
+      { title: '讓醫官上岸，試着把人穩住', setsFlags: ['hormuz_heal'], setsFlagsOnFail: ['hormuz_sick'], bonds: [{ id: 'hormuz', delta: 4 }, { id: 'wang', delta: 2 }], bondsOnFail: [{ id: 'wang', delta: -3 }, { id: 'hormuz', delta: -4 }], requirement: { stat: 'knowledge', value: 6 }, requirementText: '學識要夠 6，還要花 30 銀', cost: { silver: 30 }, effects: { trust: 20, morale: 10 }, failEffects: { trust: -15, morale: -20 }, successText: '藥和乾淨的水比金杯子有用。城裡的人開始把大明的船叫做肯回來的船。', failText: '病沒有聽你的。船上也有人倒下。這一注下重了。', needsChallenge: true },
+      { title: '買足水，趁夜離開', setsFlags: ['hormuz_flee'], bonds: [{ id: 'hormuz', delta: -1 }], requirementText: '花 20 銀', cost: { silver: 20 }, effects: { trust: 0, morale: 5 }, successText: '水滿了，帆也滿了。疫城留在後面。外交留在了後面。', autoSuccess: true },
     ],
   },
   {
@@ -375,9 +375,9 @@ export const GAME_EVENTS: GameEvent[] = [
     title: '木骨都束・珊瑚石上的城',
     description: '分艙的船繞過大洋，看見一座用珊瑚石砌成的城。市上有龍涎香，有象牙，還有人不太相信你真的從那麼遠的東邊來。國王站在風裡，等你先開口。',
     choices: [
-      { title: '以絲瓷換香，互相見個禮', requirementText: '花 25 銀', cost: { silver: 25 }, effects: { trust: 10, morale: 5, connections: 1 }, successText: '禮物換了禮物。龍涎香進了艙，這座城也肯把名字寫進你的簿子。', autoSuccess: true },
-      { title: '上岸，把城和南邊的星一起記下來', requirement: { stat: 'knowledge', value: 4 }, requirementText: '學識要夠 4', effects: { trust: 8, knowledge: 2, morale: 5 }, successText: '石城、市集、夜裡那幾顆低低的星，都留下了。以後的船可以沿着你的句子來。', autoSuccess: true },
-      { title: '只補水，不多留', effects: { trust: -5, morale: -5 }, successText: '船安全。可人已經到了非洲東岸，你幾乎沒有把這裡的故事帶回去。皇上會覺得這一段白走。', autoSuccess: true },
+      { title: '以絲瓷換香，互相見個禮', setsFlags: ['moga_trade'], bonds: [{ id: 'mogadishu', delta: 3 }], requirementText: '花 25 銀', cost: { silver: 25 }, effects: { trust: 10, morale: 5, connections: 1 }, successText: '禮物換了禮物。龍涎香進了艙，這座城也肯把名字寫進你的簿子。', autoSuccess: true },
+      { title: '上岸，把城和南邊的星一起記下來', setsFlags: ['moga_survey'], bonds: [{ id: 'ma', delta: 2 }, { id: 'mogadishu', delta: 1 }], requirement: { stat: 'knowledge', value: 4 }, requirementText: '學識要夠 4', effects: { trust: 8, knowledge: 2, morale: 5 }, successText: '石城、市集、夜裡那幾顆低低的星，都留下了。以後的船可以沿着你的句子來。', autoSuccess: true },
+      { title: '只補水，不多留', setsFlags: ['moga_rush'], bonds: [{ id: 'mogadishu', delta: -2 }], effects: { trust: -5, morale: -5 }, successText: '船安全。可人已經到了非洲東岸，你幾乎沒有把這裡的故事帶回去。皇上會覺得這一段白走。', autoSuccess: true },
     ],
   },
   {
@@ -387,9 +387,9 @@ export const GAME_EVENTS: GameEvent[] = [
     title: '榜葛剌・牠的脖子比故事還長',
     description: '這不是永樂三年的事。永樂十二年（1414），第四次下西洋前後，榜葛剌要把一頭長頸鹿送去北京。牠來自東非的海商網路，不是首航在占城牽到的。通事問你：朝裡會不會叫牠麒麟？',
     choices: [
-      { title: '對着圖和見聞，把牠認清楚', requirement: { stat: 'knowledge', value: 5 }, requirementText: '學識要夠 5', effects: { trust: 20, morale: 15, qilin: true }, failEffects: { trust: -20, morale: -5 }, successText: '你沒有把牠說成神話，也沒有把牠說成怪物。南京願意稱牠麒麟。祥瑞這一次是你帶回去的。', failText: '你猶豫太久。動物還在，名字沒有定。皇上等的那句話，你沒有送上。', needsChallenge: true, isQilinEvent: true },
-      { title: '按朝貢的禮收下，不多解釋', requirement: { stat: 'connections', value: 5 }, requirementText: '人脈要夠 5', effects: { trust: 10, morale: 10 }, successText: '禮數到了。珍禽異獸進了名單，皇上不算失望，也還沒有聽見那聲「麒麟」。', autoSuccess: true },
-      { title: '只收香料和布，動物留下', effects: { trust: -5, morale: 5 }, successText: '穩。沒有人被不認識的蹄子踢到。可這趟最會說故事的禮物，你讓它留在了岸上。', autoSuccess: true },
+      { title: '對着圖和見聞，把牠認清楚', setsFlags: ['qilin_named'], setsFlagsOnFail: ['qilin_miss'], bonds: [{ id: 'bengal', delta: 3 }, { id: 'ma', delta: 3 }, { id: 'wang', delta: 3 }], bondsOnFail: [{ id: 'wang', delta: -1 }], requirement: { stat: 'knowledge', value: 5 }, requirementText: '學識要夠 5', effects: { trust: 20, morale: 15, qilin: true }, failEffects: { trust: -20, morale: -5 }, successText: '你沒有把牠說成神話，也沒有把牠說成怪物。南京願意稱牠麒麟。祥瑞這一次是你帶回去的。', failText: '你猶豫太久。動物還在，名字沒有定。皇上等的那句話，你沒有送上。', needsChallenge: true, isQilinEvent: true },
+      { title: '按朝貢的禮收下，不多解釋', setsFlags: ['qilin_tribute'], bonds: [{ id: 'bengal', delta: 1 }], requirement: { stat: 'connections', value: 5 }, requirementText: '人脈要夠 5', effects: { trust: 10, morale: 10 }, successText: '禮數到了。珍禽異獸進了名單，皇上不算失望，也還沒有聽見那聲「麒麟」。', autoSuccess: true },
+      { title: '只收香料和布，動物留下', setsFlags: ['qilin_left'], bonds: [{ id: 'bengal', delta: -1 }, { id: 'wang', delta: -1 }], effects: { trust: -5, morale: 5 }, successText: '穩。沒有人被不認識的蹄子踢到。可這趟最會說故事的禮物，你讓它留在了岸上。', autoSuccess: true },
     ],
   },
 ];
